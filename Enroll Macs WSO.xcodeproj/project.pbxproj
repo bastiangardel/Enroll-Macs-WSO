@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AF076ACE2CEB964F00C53C39 /* SMBClient in Frameworks */ = {isa = PBXBuildFile; productRef = AF076ACD2CEB964F00C53C39 /* SMBClient */; };
 		AFCB0F7B2CEB629600E64EF9 /* KeychainAccess in Frameworks */ = {isa = PBXBuildFile; productRef = AFCB0F7A2CEB629600E64EF9 /* KeychainAccess */; };
 		AFCB0F7D2CEB62E600E64EF9 /* KeychainAccess in Frameworks */ = {isa = PBXBuildFile; productRef = AFCB0F7C2CEB62E600E64EF9 /* KeychainAccess */; };
 		AFCB0F802CEB630800E64EF9 /* KeychainAccess in Frameworks */ = {isa = PBXBuildFile; productRef = AFCB0F7F2CEB630800E64EF9 /* KeychainAccess */; };
@@ -33,6 +34,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AFCB0F832CEB633D00E64EF9 /* KeychainAccess in Frameworks */,
+				AF076ACE2CEB964F00C53C39 /* SMBClient in Frameworks */,
 				AFCB0F7D2CEB62E600E64EF9 /* KeychainAccess in Frameworks */,
 				AFCB0F892CEB63F700E64EF9 /* KeychainAccess in Frameworks */,
 				AFCB0F7B2CEB629600E64EF9 /* KeychainAccess in Frameworks */,
@@ -86,6 +88,7 @@
 				AFCB0F822CEB633D00E64EF9 /* KeychainAccess */,
 				AFCB0F852CEB636B00E64EF9 /* KeychainAccess */,
 				AFCB0F882CEB63F700E64EF9 /* KeychainAccess */,
+				AF076ACD2CEB964F00C53C39 /* SMBClient */,
 			);
 			productName = "Enroll Macs WSO";
 			productReference = AFCB0F442CEB5CDD00E64EF9 /* Enroll Macs WSO.app */;
@@ -117,6 +120,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				AFCB0F872CEB63F700E64EF9 /* XCLocalSwiftPackageReference "../KeychainAccess-4.2.2" */,
+				AF076ACC2CEB964F00C53C39 /* XCLocalSwiftPackageReference "../SMBClient-0.2.0" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AFCB0F452CEB5CDD00E64EF9 /* Products */;
@@ -365,6 +369,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		AF076ACC2CEB964F00C53C39 /* XCLocalSwiftPackageReference "../SMBClient-0.2.0" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../SMBClient-0.2.0";
+		};
 		AFCB0F872CEB63F700E64EF9 /* XCLocalSwiftPackageReference "../KeychainAccess-4.2.2" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "../KeychainAccess-4.2.2";
@@ -372,6 +380,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		AF076ACD2CEB964F00C53C39 /* SMBClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SMBClient;
+		};
 		AFCB0F7A2CEB629600E64EF9 /* KeychainAccess */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = KeychainAccess;
