@@ -412,23 +412,23 @@ struct AddMachineView: View {
 // MARK: - Configuration Vue
 struct ConfigurationView: View {
     @Binding var isConfigured: Bool
-    @State private var locationGroupId = ""
-    @State private var platformId = ""
-    @State private var ownership = ""
-    @State private var messageType = ""
-    @State private var sambaPath = ""
-    @State private var sambaUsername = ""
-    @State private var sambaPassword = ""
+    @State private var locID = ""
+    @State private var pID = ""
+    @State private var OShip = ""
+    @State private var MT = ""
+    @State private var sPath = ""
+    @State private var sUsername = ""
+    @State private var sPassword = ""
     
     var body: some View {
         VStack {
-            TextField("Location Group ID", text: $locationGroupId)
-            TextField("Platform ID", text: $platformId)
-            TextField("Ownership", text: $ownership)
-            TextField("Message Type", text: $messageType)
-            TextField("Chemin Samba", text: $sambaPath)
-            TextField("Nom d'utilisateur Samba", text: $sambaUsername)
-            SecureField("Mot de passe Samba", text: $sambaPassword)
+            TextField("Location Group ID", text: $locID)
+            TextField("Platform ID", text: $pID)
+            TextField("Ownership", text: $OShip)
+            TextField("Message Type", text: $MT)
+            TextField("Chemin Samba", text: $sPath)
+            TextField("Nom d'utilisateur Samba", text: $sUsername)
+            SecureField("Mot de passe Samba", text: $sPassword)
             
             HStack {
                 Button("Enregistrer") {
@@ -448,41 +448,48 @@ struct ConfigurationView: View {
     /// Charger les valeurs existantes depuis Core Data et Keychain
     func loadConfiguration() {
         if let config = getAppConfig() {
-            locationGroupId = config.locationGroupId ?? ""
-            platformId = String(config.platformId)
-            ownership = config.ownership ?? ""
-            messageType = String(config.messageType)
-            sambaPath = config.sambaPath ?? ""
+            locID = config.locationGroupId ?? ""
+            pID = String(config.platformId)
+            OShip = config.ownership ?? ""
+            MT = String(config.messageType)
+            sPath = config.sambaPath ?? ""
         }
-        sambaUsername = keychain[KeychainKeys.sambaUsername.rawValue] ?? ""
-        sambaPassword = keychain[KeychainKeys.sambaPassword.rawValue] ?? ""
+        sUsername = keychain[KeychainKeys.sambaUsername.rawValue] ?? ""
+        sPassword = keychain[KeychainKeys.sambaPassword.rawValue] ?? ""
+        
+        clearStorage()
     }
     
     /// Enregistrer les nouvelles valeurs dans Core Data et Keychain
     func saveConfiguration() {
         saveToCoreData(
-            locationGroupId: locationGroupId,
-            platformId: Int(platformId) ?? 0,
-            ownership: ownership,
-            messageType: Int(messageType) ?? 0,
-            sambaPath: sambaPath
+            locationGroupId: locID,
+            platformId: Int(pID) ?? 0,
+            ownership: OShip,
+            messageType: Int(MT) ?? 0,
+            sambaPath: sPath
         )
-        keychain[KeychainKeys.sambaUsername.rawValue] = sambaUsername
-        keychain[KeychainKeys.sambaPassword.rawValue] = sambaPassword
+        keychain[KeychainKeys.sambaUsername.rawValue] = sUsername
+        keychain[KeychainKeys.sambaPassword.rawValue] = sPassword
+        
+        clearField()
+        
         isConfigured = true
     }
     
-    /// Effacer toutes les valeurs stockées et réinitialiser les champs
+    ///  Réinitialiser les champs
     func clearConfiguration() {
-        clearStorage()
-        locationGroupId = ""
-        platformId = ""
-        ownership = ""
-        messageType = ""
-        sambaPath = ""
-        sambaUsername = ""
-        sambaPassword = ""
-        isConfigured = false
+        clearField()
+    }
+    
+    func clearField() {
+        locID = ""
+        pID = ""
+        OShip = ""
+        MT = ""
+        sPath = ""
+        sUsername = ""
+        sPassword = ""
     }
 }
 
