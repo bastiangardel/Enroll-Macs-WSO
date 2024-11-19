@@ -103,44 +103,45 @@ func saveFileToSamba(filename: String, content: Data, completion: @escaping (Boo
         return
     }
 
-    // Décomposer l'URL SMB pour extraire l'hôte et le partage
     guard let url = URL(string: sambaPath), let host = url.host else {
         completion(false, "Chemin SMB invalide")
         return
     }
 
-    // Initialiser le client SMB avec l'hôte
     let client = SMBClient(host: host)
-    
+
+//    let timeoutWorkItem = DispatchWorkItem {
+//        completion(false, "Connexion au serveur Samba dépassée (timeout de \(Int(timeout)) secondes).")
+//    }
+
     Task {
         do {
-            // Se connecter au serveur SMB avec les identifiants
+            //DispatchQueue.main.asyncAfter(deadline: .now() + timeout, execute: timeoutWorkItem)
+
+            // Se connecter au serveur SMB
             try await client.login(username: sambaUsername, password: sambaPassword)
-
-            // Connexion au partage SMB
-            // Extraire le nom du partage à partir du chemin
-            let shareName = url.pathComponents.count > 1 ? url.pathComponents[1] : ""
-
-            // Si le partage est manquant dans le chemin, on retourne une erreur
-            guard !shareName.isEmpty else {
-                completion(false, "Nom de partage manquant dans l'URL SMB")
-                return
-            }
             
-            try await client.connectShare(String(shareName))
+//            if !timeoutWorkItem.isCancelled {
+//                timeoutWorkItem.cancel() // Annuler le timeout si la connexion a réussi
+                
+                // Connexion au partage
+                let shareName = url.pathComponents.count > 1 ? url.pathComponents[1] : ""
+                guard !shareName.isEmpty else {
+                    completion(false, "Nom de partage manquant dans l'URL SMB")
+                    return
+                }
 
-            // Télécharger le fichier sur le serveur SMB
-            let remoteFilePath = url.path.dropFirst(shareName.count + 1) // Le reste du chemin après le nom du partage
-            try await client.upload(content: content, path: remoteFilePath.appending("/\(filename)"))
+                try await client.connectShare(String(shareName))
+                
+                let remoteFilePath = url.path.dropFirst(shareName.count + 1) // Chemin relatif
+                try await client.upload(content: content, path: remoteFilePath.appending("/\(filename)"))
+                try await client.disconnectShare()
 
-            // Déconnexion après l'upload
-            try await client.disconnectShare()
-
-            // Terminer avec succès
-            completion(true, "Fichier enregistré avec succès sur \(sambaPath)")
+                completion(true, "Fichier enregistré avec succès sur \(sambaPath)")
+            
         } catch {
-            // Gérer les erreurs
-            completion(false, "Erreur : \(error.localizedDescription)")
+            //timeoutWorkItem.cancel() // Annuler le timeout si une erreur s'est produite
+            completion(false, "Erreur lors de l'envoi du fichier : \(error.localizedDescription)")
         }
     }
 }
@@ -154,9 +155,21 @@ struct MachineListView: View {
     @State private var selectedMachines: Set<UUID> = [] // Set to track selected machines for deletion
     @State private var isEditing: Bool = false
     @State private var isAuthenticated = false // Désormais, utilisé uniquement pour l'authentification lors de l'envoi
+    @State private var isProcessing: Bool = false // Indicateur d'état de traitement
+    @State private var progress: Double = 0.0 // Progression en pourcentage
 
     var body: some View {
         VStack {
+            if isProcessing {
+                VStack {
+                    ProgressView(value: progress)
+                        .progressViewStyle(LinearProgressViewStyle())
+                        .padding()
+                    Text("Progression : \(Int(progress * 100))%")
+                        .font(.subheadline)
+                }
+            }
+            
             Spacer()
                 .frame(height: 20)
             
@@ -223,85 +236,116 @@ struct MachineListView: View {
                 Button("Ajouter une machine") {
                     showAddMachineView = true
                 }
+                .disabled(isProcessing)
                 
                 Button("Supprimer sélectionnées") {
                     deleteSelectedMachines()
                 }
                 .disabled(selectedMachines.isEmpty)
+                .disabled(isProcessing)
                 
                 Button("Supprimer tout") {
                     deleteAllMachines()
                 }
                 .foregroundColor(.red)
                 .disabled(machines.isEmpty)
+                .disabled(isProcessing)
                 
                 Button("Envoyer") {
                     authenticateUserAndSendMachines()
                 }
-                .disabled(machines.isEmpty) // Désactiver tant que l'utilisateur n'est pas authentifié
+                .disabled(machines.isEmpty)
+                .disabled(isProcessing)
                 
-                Button("Clear Configuration") {
-                    clearStorage()
-                    isConfigured = false // Retour à l'écran de configuration
+                Button("Editer Config") {
+                    isConfigured = false // Retourne temporairement à la vue de configuration
                 }
+                .disabled(isProcessing)
                 
                 Button("Close App") {
                     NSApp.terminate(nil)
                 }
+                .disabled(isProcessing)
             }
             .padding()
         }
         .sheet(isPresented: $showAddMachineView) {
             AddMachineView { newMachine in
                 machines.append(newMachine)
+                showStatusMessage("Machine ajoutée avec succès !")
             }
         }
     }
     
-    // Fonction de demande d'authentification et envoi des machines
+    // Fonction utilitaire pour afficher un message temporaire
+    func showStatusMessage(_ message: String, duration: TimeInterval = 3.0) {
+        statusMessage = message
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+            if statusMessage == message { // Évite de supprimer un nouveau message qui pourrait avoir été défini entre-temps
+                statusMessage = ""
+            }
+        }
+    }
+    
     func authenticateUserAndSendMachines() {
         let context = LAContext()
         var error: NSError?
         
-        // Vérifier si l'authentification biométrique est disponible
         if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
-            // Demander l'authentification biométrique
             context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "que vous vous authentifiez pour envoyer les machines") { success, authenticationError in
                 DispatchQueue.main.async {
                     if success {
                         isAuthenticated = true
-                        sendMachinesToSamba() // Envoyer les machines après authentification réussie
+                        sendMachinesToSamba()
                     } else {
-                        statusMessage = authenticationError?.localizedDescription ?? "Échec de l'authentification."
+                        showStatusMessage(authenticationError?.localizedDescription ?? "Échec de l'authentification.")
                     }
                 }
             }
         } else {
-            // Biométrie non disponible, afficher une erreur
-            statusMessage = "La biométrie n'est pas disponible sur cet appareil."
+            showStatusMessage("La biométrie n'est pas disponible sur cet appareil.")
         }
     }
     
     func sendMachinesToSamba() {
-        for machine in machines {
+        guard !machines.isEmpty else {
+            showStatusMessage("Aucune machine à envoyer.")
+            return
+        }
+        
+        isProcessing = true
+        progress = 0.0
+        let totalMachines = machines.count
+        var successfullySent = 0
+        
+        var remainingMachines: [Machine] = []
+        
+        for (index, machine) in machines.enumerated() {
             if let jsonData = machine.toJSON() {
                 let filename = "scx-\(machine.assetNumber).json"
                 saveFileToSamba(filename: filename, content: jsonData) { success, message in
                     DispatchQueue.main.async {
                         if success {
-                            statusMessage = message
-                            machines.removeAll()
-                            selectedMachines.removeAll()
+                            successfullySent += 1
                         } else {
-                            statusMessage = message
+                            remainingMachines.append(machine)
+                        }
+                        
+                        progress = Double(index + 1) / Double(totalMachines)
+                        
+                        if index == totalMachines - 1 {
+                            isProcessing = false
+                            machines = remainingMachines
+                            showStatusMessage("\(successfullySent) fichier(s) enregistré(s) sur \(totalMachines).\n \(message)")
                         }
                     }
                 }
+            } else {
+                remainingMachines.append(machine)
             }
         }
     }
 
-    // Supprimer des machines spécifiques
     func deleteMachines(at offsets: IndexSet) {
         for index in offsets {
             let machine = machines[index]
@@ -312,21 +356,21 @@ struct MachineListView: View {
         machines.remove(atOffsets: offsets)
     }
 
-    // Supprimer les machines sélectionnées
     func deleteSelectedMachines() {
         machines.removeAll { machine in
             selectedMachines.contains(machine.id)
         }
         selectedMachines.removeAll()
+        showStatusMessage("Machines sélectionnées supprimées.")
     }
 
-    // Supprimer toutes les machines
     func deleteAllMachines() {
         machines.removeAll()
         selectedMachines.removeAll()
+        showStatusMessage("Toutes les machines ont été supprimées.")
     }
     
-    func applicationShouldTerminateAfterLastWindowClosed (_ theApplication: NSApplication) -> Bool {
+    func applicationShouldTerminateAfterLastWindowClosed(_ theApplication: NSApplication) -> Bool {
         return true
     }
 }
@@ -394,13 +438,35 @@ struct ConfigurationView: View {
             TextField("Nom d'utilisateur Samba", text: $sambaUsername)
             SecureField("Mot de passe Samba", text: $sambaPassword)
             
-            Button("Enregistrer") {
-                saveConfiguration()
+            HStack {
+                Button("Enregistrer") {
+                    saveConfiguration()
+                }
+                
+                Button("Clear Configuration") {
+                    clearConfiguration()
+                }
+                .foregroundColor(.red)
             }
         }
         .padding()
+        .onAppear(perform: loadConfiguration)
     }
     
+    /// Charger les valeurs existantes depuis Core Data et Keychain
+    func loadConfiguration() {
+        if let config = getAppConfig() {
+            locationGroupId = config.locationGroupId ?? ""
+            platformId = String(config.platformId)
+            ownership = config.ownership ?? ""
+            messageType = String(config.messageType)
+            sambaPath = config.sambaPath ?? ""
+        }
+        sambaUsername = keychain[KeychainKeys.sambaUsername.rawValue] ?? ""
+        sambaPassword = keychain[KeychainKeys.sambaPassword.rawValue] ?? ""
+    }
+    
+    /// Enregistrer les nouvelles valeurs dans Core Data et Keychain
     func saveConfiguration() {
         saveToCoreData(
             locationGroupId: locationGroupId,
@@ -412,6 +478,19 @@ struct ConfigurationView: View {
         keychain[KeychainKeys.sambaUsername.rawValue] = sambaUsername
         keychain[KeychainKeys.sambaPassword.rawValue] = sambaPassword
         isConfigured = true
+    }
+    
+    /// Effacer toutes les valeurs stockées et réinitialiser les champs
+    func clearConfiguration() {
+        clearStorage()
+        locationGroupId = ""
+        platformId = ""
+        ownership = ""
+        messageType = ""
+        sambaPath = ""
+        sambaUsername = ""
+        sambaPassword = ""
+        isConfigured = false
     }
 }
 
