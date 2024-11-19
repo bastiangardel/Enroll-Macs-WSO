@@ -156,9 +156,11 @@ struct MachineListView: View {
                 VStack {
                     ProgressView(value: progress)
                         .progressViewStyle(LinearProgressViewStyle())
+                        .controlSize(.large)
                         .padding()
                     Text("Progression : \(Int(progress * 100))%")
                         .font(.subheadline)
+                        .fontWeight(.bold)
                 }
             }
             
