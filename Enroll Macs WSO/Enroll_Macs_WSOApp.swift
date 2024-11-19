@@ -285,6 +285,8 @@ struct MachineListView: View {
         let context = LAContext()
         var error: NSError?
         
+        isProcessing = true
+        
         if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
             context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "que vous vous authentifiez pour envoyer les machines") { success, authenticationError in
                 DispatchQueue.main.async {
@@ -293,6 +295,7 @@ struct MachineListView: View {
                         sendMachinesToSamba()
                     } else {
                         showStatusMessage(authenticationError?.localizedDescription ?? "Échec de l'authentification.")
+                        isProcessing = false
                     }
                 }
             }
