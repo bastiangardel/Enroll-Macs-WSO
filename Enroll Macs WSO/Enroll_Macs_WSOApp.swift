@@ -110,19 +110,12 @@ func saveFileToSamba(filename: String, content: Data, completion: @escaping (Boo
 
     let client = SMBClient(host: host)
 
-//    let timeoutWorkItem = DispatchWorkItem {
-//        completion(false, "Connexion au serveur Samba dépassée (timeout de \(Int(timeout)) secondes).")
-//    }
 
     Task {
         do {
-            //DispatchQueue.main.asyncAfter(deadline: .now() + timeout, execute: timeoutWorkItem)
 
             // Se connecter au serveur SMB
             try await client.login(username: sambaUsername, password: sambaPassword)
-            
-//            if !timeoutWorkItem.isCancelled {
-//                timeoutWorkItem.cancel() // Annuler le timeout si la connexion a réussi
                 
                 // Connexion au partage
                 let shareName = url.pathComponents.count > 1 ? url.pathComponents[1] : ""
@@ -140,7 +133,6 @@ func saveFileToSamba(filename: String, content: Data, completion: @escaping (Boo
                 completion(true, "Fichier enregistré avec succès sur \(sambaPath)")
             
         } catch {
-            //timeoutWorkItem.cancel() // Annuler le timeout si une erreur s'est produite
             completion(false, "Erreur lors de l'envoi du fichier : \(error.localizedDescription)")
         }
     }
