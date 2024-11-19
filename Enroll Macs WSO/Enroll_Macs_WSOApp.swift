@@ -486,6 +486,7 @@ struct ConfigurationView: View {
     }
 }
 
+// MARK: - Main
 @main
 struct Enroll_Macs_WSOApp: App {
     @AppStorage("isConfigured") private var isConfigured: Bool = false
