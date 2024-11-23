@@ -11,6 +11,23 @@ import KeychainAccess
 import SwiftUI
 import SMBClient
 import LocalAuthentication
+import UniformTypeIdentifiers
+import AppKit
+
+
+// MARK: - Outils
+func normalizeKeys(_ dictionary: [String: String]) -> [String: String] {
+    var normalized = [String: String]()
+    for (key, value) in dictionary {
+        // Supprime les caractères invisibles et normalise la casse
+        let cleanedKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\u{FEFF}", with: "")
+            .lowercased()
+        normalized[cleanedKey] = value
+    }
+    return normalized
+}
+
 
 // MARK: - Modèles JSON
 struct Machine: Identifiable, Encodable {
@@ -102,39 +119,346 @@ func saveFileToSamba(filename: String, content: Data, completion: @escaping (Boo
         completion(false, "Configuration manquante")
         return
     }
-
+    
     guard let url = URL(string: sambaPath), let host = url.host else {
         completion(false, "Chemin SMB invalide")
         return
     }
-
+    
     let client = SMBClient(host: host)
-
-
+    
+    
     Task {
         do {
-
+            
             // Se connecter au serveur SMB
             try await client.login(username: sambaUsername, password: sambaPassword)
-                
-                // Connexion au partage
-                let shareName = url.pathComponents.count > 1 ? url.pathComponents[1] : ""
-                guard !shareName.isEmpty else {
-                    completion(false, "Nom de partage manquant dans l'URL SMB")
-                    return
-                }
-
-                try await client.connectShare(String(shareName))
-                
-                let remoteFilePath = url.path.dropFirst(shareName.count + 1) // Chemin relatif
-                try await client.upload(content: content, path: remoteFilePath.appending("/\(filename)"))
-                try await client.disconnectShare()
-
-                completion(true, "Fichier enregistré avec succès sur \(sambaPath)")
+            
+            // Connexion au partage
+            let shareName = url.pathComponents.count > 1 ? url.pathComponents[1] : ""
+            guard !shareName.isEmpty else {
+                completion(false, "Nom de partage manquant dans l'URL SMB")
+                return
+            }
+            
+            try await client.connectShare(String(shareName))
+            
+            let remoteFilePath = url.path.dropFirst(shareName.count + 1) // Chemin relatif
+            try await client.upload(content: content, path: remoteFilePath.appending("/\(filename)"))
+            try await client.disconnectShare()
+            
+            completion(true, "Fichier enregistré avec succès sur \(sambaPath)")
             
         } catch {
             completion(false, "Erreur lors de l'envoi du fichier : \(error.localizedDescription)")
         }
+    }
+}
+
+// MARK: - Vue selection chemin de sauvegarde
+struct FileSavePickerButton: View {
+    let title: String
+    let suggestedFileName: String
+    let onSelect: (URL) -> Void
+    
+    var body: some View {
+        Button(title) {
+            showSavePanel()
+        }
+    }
+    
+    private func showSavePanel() {
+        DispatchQueue.main.async {
+            guard let window = NSApplication.shared.windows.first(where: { $0.isKeyWindow }) else {
+                print("Impossible de trouver la fenêtre hôte.")
+                return
+            }
+            
+            let savePanel = NSSavePanel()
+            savePanel.title = title
+            savePanel.prompt = "Enregistrer"
+            savePanel.nameFieldStringValue = suggestedFileName
+            savePanel.allowedContentTypes = [.commaSeparatedText]
+            
+            savePanel.beginSheetModal(for: window) { response in
+                if response == .OK, let url = savePanel.url {
+                    onSelect(url)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Vue selection fichier
+struct FilePickerButton: View {
+    let title: String
+    let onSelect: (URL) -> Void
+    
+    @State private var isPresented = false
+    
+    var body: some View {
+        Button(title) {
+            isPresented = true
+        }
+        .fileImporter(
+            isPresented: $isPresented,
+            allowedContentTypes: [.commaSeparatedText],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    onSelect(url)
+                }
+            case .failure(let error):
+                print("Erreur de sélection de fichier : \(error.localizedDescription)")
+            }
+        }
+    }
+}
+
+// MARK: - Vue import csv
+
+struct CSVImportView: View {
+    @Environment(\.dismiss) var dismiss
+    var onImport: ([Machine]) -> Void
+    
+    @State private var nameCSVURL: URL?
+    @State private var ocsCSVURL: URL?
+    @State private var inventoryCSVURL: URL?
+    @State private var missingCSVURL: URL?
+    @State private var doublonsCSVURL: URL?
+    @State private var errorMessage: String = ""
+    
+    var body: some View {
+        VStack {
+            Text("Importer via CSV")
+                .font(.headline)
+                .padding()
+            
+            // Sélection des fichiers
+            FilePickerButton(title: "Sélectionner le fichier name.csv") { url in
+                nameCSVURL = url
+            }
+            .padding(.bottom)
+            
+            FilePickerButton(title: "Sélectionner le fichier ocs.csv") { url in
+                ocsCSVURL = url
+            }
+            .padding(.bottom)
+            
+            FilePickerButton(title: "Sélectionner le fichier inventory.csv") { url in
+                inventoryCSVURL = url
+            }
+            .padding(.bottom)
+            
+            FileSavePickerButton(title: "Sélectionner le chemin pour missing.csv", suggestedFileName: "missing.csv") { url in
+                missingCSVURL = url
+            }
+            .padding(.bottom)
+            
+            FileSavePickerButton(title: "Sélectionner le chemin pour doublons.csv", suggestedFileName: "doublons.csv") { url in
+                doublonsCSVURL = url
+            }
+            .padding(.bottom)
+            
+            Button("Importer") {
+                generateAndImportCSVFiles()
+            }
+            .disabled(nameCSVURL == nil || ocsCSVURL == nil || missingCSVURL == nil || doublonsCSVURL == nil)
+            .padding()
+            
+            if !errorMessage.isEmpty {
+                Text(errorMessage)
+                    .foregroundColor(.red)
+                    .padding()
+            }
+            
+            Button("Annuler") {
+                dismiss()
+            }
+        }
+        .padding()
+    }
+    
+    func generateAndImportCSVFiles() {
+        guard let nameURL = nameCSVURL,
+              let ocsURL = ocsCSVURL,
+              let inventoryURL = inventoryCSVURL,
+              let missingURL = missingCSVURL,
+              let doublonsURL = doublonsCSVURL else {
+            errorMessage = "Veuillez sélectionner tous les fichiers nécessaires."
+            return
+        }
+        
+        do {
+            let nameData = try parseCSV(url: nameURL)
+            let ocsData = try parseCSV(url: ocsURL)
+            let inventoryData = try parseCSV(url: inventoryURL)
+            
+            // Utilise processCSVData pour traiter les données et générer les fichiers nécessaires
+            let machines = processCSVData(
+                nameData: nameData,
+                ocsData: ocsData,
+                inventoryData: inventoryData,
+                missingURL: missingURL,
+                doublonsURL: doublonsURL
+            )
+            
+            // Passe les machines au callback
+            onImport(machines)
+            dismiss()
+        } catch {
+            errorMessage = "Erreur lors du traitement : \(error.localizedDescription)"
+        }
+    }
+    
+    func exportCSV(data: [[String: String]], to url: URL) throws {
+        let headers = data.first?.keys.joined(separator: ",") ?? ""
+        let rows = data.map { $0.values.joined(separator: ",") }
+        let csvContent = ([headers] + rows).joined(separator: "\n")
+        try csvContent.write(to: url, atomically: true, encoding: .utf8)
+    }
+    
+    func parseCSV(url: URL) throws -> [[String: String]] {
+        let content = try String(contentsOf: url, encoding: .utf8)
+        
+        // Nettoyer le contenu pour ignorer les caractères invisibles (comme les espaces en début et fin de ligne)
+        let cleanedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Séparer le contenu en lignes
+        let rows = cleanedContent.components(separatedBy: "\n").filter { !$0.isEmpty }
+        
+        // Extraire les en-têtes
+        let headers = rows[0].components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        
+        return rows.dropFirst().compactMap { row in
+            let values = row.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            
+            // Si le nombre de valeurs ne correspond pas à celui des en-têtes, on ignore cette ligne
+            guard values.count == headers.count else { return nil }
+            
+            // Retourner le dictionnaire des valeurs
+            return Dictionary(uniqueKeysWithValues: zip(headers, values))
+        }
+    }
+    
+    func processCSVData(
+        nameData: [[String: String]],
+        ocsData: [[String: String]],
+        inventoryData: [[String: String]],
+        missingURL: URL,
+        doublonsURL: URL
+    ) -> [Machine] {
+        var machines: [Machine] = []
+        var missingResults: [[String: String]] = []
+        var doublonsResults: [[String: String]] = []
+        
+        // Récupération des valeurs constantes de configuration
+        let config = getAppConfig() // Méthode pour récupérer la configuration depuis Core Data
+        let locationGroupId = config?.locationGroupId ?? "DefaultGroup"
+        let platformId = config?.platformId ?? 12
+        let messageType = config?.messageType ?? 0
+        let ownership = config?.ownership ?? "C"
+        
+        // Étape 1 : Traiter name.csv et ocs.csv
+        var nameToComputerMatches: [String: [String]] = [:]
+        var results: [[String: String]] = []
+        
+        let normalizedOcsData = ocsData.map { normalizeKeys($0) }
+        let normalizedNameData = nameData.map { normalizeKeys($0) }
+        
+        for ocsRow in normalizedOcsData {
+            guard let computerName = ocsRow["computername"] ,
+                  let serialNumber = ocsRow["serialnumber"],
+                  let userName = ocsRow["username"] else {
+                continue }
+            
+            for nameRow in normalizedNameData {
+                guard let name = nameRow["name"] else {continue }
+                
+                // Vérifier si computerName contient le nom (insensible à la casse)
+                if computerName.range(of: name, options: .caseInsensitive) != nil {
+                    if nameToComputerMatches[name] == nil {
+                        nameToComputerMatches[name] = []
+                    }
+                    nameToComputerMatches[name]?.append(computerName)
+                    
+                    // Ajouter aux résultats
+                    results.append([
+                        "computername": computerName,
+                        "username": userName,
+                        "serialnumber": serialNumber
+                    ])
+                }
+            }
+            
+        }
+        
+        // Détecter doublons et manquants
+        for (name, computerNames) in nameToComputerMatches {
+            if computerNames.count > 1 {
+                for duplicateComputerName in computerNames {
+                    doublonsResults.append(["computername": duplicateComputerName, "name": name])
+                }
+            }
+            if computerNames.isEmpty {
+                missingResults.append(["name": name])
+            }
+        }
+        
+        for nameRow in nameData {
+            guard let name = nameRow["name"] else { continue }
+            if nameToComputerMatches[name] == nil {
+                missingResults.append(["name": name])
+            }
+        }
+        
+        // Exporter missing.csv et doublons.csv
+        do {
+            try exportCSV(data: missingResults, to: missingURL)
+            try exportCSV(data: doublonsResults, to: doublonsURL)
+        } catch {
+            print("Erreur lors de l'export des fichiers CSV : \(error.localizedDescription)")
+        }
+        
+        // Étape 2 : Générer des fichiers JSON basés sur nextmigrationlist.csv et inventory.csv
+        for result in results {
+            guard let sourceSerial = result["serialnumber"],
+                  let sourceComputerName = result["computername"],
+                  let sourceUserName = result["username"] else { continue }
+            
+            // Récupérer les 6 derniers caractères du numéro de série
+            let sourceSerialLast6 = String(sourceSerial.suffix(6))
+            
+            // Trouver les correspondances dans inventory.csv
+            let matchingInventory = inventoryData.filter {
+                guard let inventorySerial = $0["serialnumber"] else { return false }
+                return inventorySerial.suffix(6) == sourceSerialLast6
+            }
+            
+            // Générer des objets Machine et JSON
+            var outputMachines: [Machine] = []
+            
+            for inventoryRow in matchingInventory {
+                guard let inventoryNumber = inventoryRow["inventorynumber"] else { continue }
+                let machine = Machine(
+                    endUserName: sourceUserName,
+                    assetNumber: inventoryNumber,
+                    locationGroupId: locationGroupId,
+                    messageType: Int(messageType),
+                    serialNumber: sourceSerial,
+                    platformId: Int(platformId),
+                    friendlyName: sourceComputerName,
+                    ownership: ownership
+                )
+                outputMachines.append(machine)
+            }
+            
+            machines.append(contentsOf: outputMachines)
+        }
+        
+        return machines
     }
 }
 
@@ -149,7 +473,8 @@ struct MachineListView: View {
     @State private var isAuthenticated = false // Désormais, utilisé uniquement pour l'authentification lors de l'envoi
     @State private var isProcessing: Bool = false // Indicateur d'état de traitement
     @State private var progress: Double = 0.0 // Progression en pourcentage
-
+    @State private var showCSVImportView: Bool = false // Progression en pourcentage
+    
     var body: some View {
         VStack {
             if isProcessing {
@@ -224,13 +549,23 @@ struct MachineListView: View {
             Text(statusMessage)
                 .foregroundColor(.red)
                 .padding()
-
+            
             // Boutons d'action
             HStack {
                 Button("Ajouter une machine") {
                     showAddMachineView = true
                 }
                 .disabled(isProcessing)
+                
+                Button("Importer via CSV") {
+                    showCSVImportView = true
+                }
+                .sheet(isPresented: $showCSVImportView) {
+                    CSVImportView { importedMachines in
+                        machines.append(contentsOf: importedMachines)
+                        showStatusMessage("\(importedMachines.count) machine(s) importée(s) avec succès !")
+                    }
+                }
                 
                 Button("Supprimer sélectionnées") {
                     deleteSelectedMachines()
@@ -342,7 +677,7 @@ struct MachineListView: View {
             }
         }
     }
-
+    
     func deleteMachines(at offsets: IndexSet) {
         for index in offsets {
             let machine = machines[index]
@@ -352,7 +687,7 @@ struct MachineListView: View {
         }
         machines.remove(atOffsets: offsets)
     }
-
+    
     func deleteSelectedMachines() {
         machines.removeAll { machine in
             selectedMachines.contains(machine.id)
@@ -360,7 +695,7 @@ struct MachineListView: View {
         selectedMachines.removeAll()
         showStatusMessage("Machines sélectionnées supprimées.")
     }
-
+    
     func deleteAllMachines() {
         machines.removeAll()
         selectedMachines.removeAll()
@@ -519,5 +854,15 @@ struct Enroll_Macs_WSOApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return true
+    }
+}
+
+
+extension View {
+    func getHostingWindow() -> NSWindow? {
+        guard let window = NSApplication.shared.windows.first(where: { $0.isKeyWindow }) else {
+            return nil
+        }
+        return window
     }
 }
