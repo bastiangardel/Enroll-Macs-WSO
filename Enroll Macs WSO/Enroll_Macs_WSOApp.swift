@@ -216,8 +216,7 @@ struct FilePickerButton: View {
     }
 }
 
-// MARK: - Vue import csv
-
+// MARK: - Vue import CSV
 struct CSVImportView: View {
     @Environment(\.dismiss) var dismiss
     var onImport: ([Machine]) -> Void
@@ -235,31 +234,14 @@ struct CSVImportView: View {
                 .font(.headline)
                 .padding()
             
-            // Sélection des fichiers
-            FilePickerButton(title: "Sélectionner le fichier name.csv") { url in
-                nameCSVURL = url
-            }
-            .padding(.bottom)
+            // Sélection des fichiers avec indication visuelle
+            filePickerWithCheckmark(title: "Sélectionner le fichier name.csv", selectedURL: $nameCSVURL)
+            filePickerWithCheckmark(title: "Sélectionner le fichier ocs.csv", selectedURL: $ocsCSVURL)
+            filePickerWithCheckmark(title: "Sélectionner le fichier inventory.csv", selectedURL: $inventoryCSVURL)
             
-            FilePickerButton(title: "Sélectionner le fichier ocs.csv") { url in
-                ocsCSVURL = url
-            }
-            .padding(.bottom)
-            
-            FilePickerButton(title: "Sélectionner le fichier inventory.csv") { url in
-                inventoryCSVURL = url
-            }
-            .padding(.bottom)
-            
-            FileSavePickerButton(title: "Sélectionner le chemin pour missing.csv", suggestedFileName: "missing.csv") { url in
-                missingCSVURL = url
-            }
-            .padding(.bottom)
-            
-            FileSavePickerButton(title: "Sélectionner le chemin pour doublons.csv", suggestedFileName: "doublons.csv") { url in
-                doublonsCSVURL = url
-            }
-            .padding(.bottom)
+            // Sélection des chemins pour les fichiers à enregistrer
+            fileSavePickerWithCheckmark(title: "Sélectionner le chemin pour missing.csv", suggestedFileName: "missing.csv", selectedURL: $missingCSVURL)
+            fileSavePickerWithCheckmark(title: "Sélectionner le chemin pour doublons.csv", suggestedFileName: "doublons.csv", selectedURL: $doublonsCSVURL)
             
             Button("Importer") {
                 generateAndImportCSVFiles()
@@ -278,6 +260,34 @@ struct CSVImportView: View {
             }
         }
         .padding()
+    }
+    
+    /// Helper pour les sélecteurs de fichiers avec un checkmark
+    func filePickerWithCheckmark(title: String, selectedURL: Binding<URL?>) -> some View {
+        HStack {
+            FilePickerButton(title: title) { url in
+                selectedURL.wrappedValue = url
+            }
+            if selectedURL.wrappedValue != nil {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+            }
+        }
+        .padding(.bottom)
+    }
+    
+    /// Helper pour les sélecteurs de chemins de fichiers avec un checkmark
+    func fileSavePickerWithCheckmark(title: String, suggestedFileName: String, selectedURL: Binding<URL?>) -> some View {
+        HStack {
+            FileSavePickerButton(title: title, suggestedFileName: suggestedFileName) { url in
+                selectedURL.wrappedValue = url
+            }
+            if selectedURL.wrappedValue != nil {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+            }
+        }
+        .padding(.bottom)
     }
     
     func generateAndImportCSVFiles() {
@@ -313,9 +323,24 @@ struct CSVImportView: View {
     }
     
     func exportCSV(data: [[String: String]], to url: URL) throws {
-        let headers = data.first?.keys.joined(separator: ",") ?? ""
-        let rows = data.map { $0.values.joined(separator: ",") }
-        let csvContent = ([headers] + rows).joined(separator: "\n")
+        guard let firstRow = data.first else {
+            throw NSError(domain: "CSVExportError", code: 1, userInfo: [NSLocalizedDescriptionKey: "No data to export"])
+        }
+        
+        // Assure l'ordre des colonnes en fonction des clés du premier élément
+        let headers = Array(firstRow.keys)
+        
+        // Crée les lignes du CSV en suivant l'ordre des en-têtes
+        let rows = data.map { row in
+            headers.map { header in
+                row[header] ?? "" // Si une clé est manquante, utiliser une chaîne vide
+            }.joined(separator: ",")
+        }
+        
+        // Crée le contenu CSV avec les en-têtes suivis des lignes
+        let csvContent = ([headers.joined(separator: ",")] + rows).joined(separator: "\n")
+        
+        // Écrit le contenu CSV dans le fichier
         try csvContent.write(to: url, atomically: true, encoding: .utf8)
     }
     
@@ -763,33 +788,69 @@ struct ConfigurationView: View {
     @State private var sPath = ""
     @State private var sUsername = ""
     @State private var sPassword = ""
-    
+
     var body: some View {
-        VStack {
-            TextField("Location Group ID", text: $locID)
-            TextField("Platform ID", text: $pID)
-            TextField("Ownership", text: $OShip)
-            TextField("Message Type", text: $MT)
-            TextField("Chemin Samba", text: $sPath)
-            TextField("Nom d'utilisateur Samba", text: $sUsername)
-            SecureField("Mot de passe Samba", text: $sPassword)
-            
+        VStack(alignment: .leading, spacing: 20) {
+            HStack {
+                Text("Location Group ID:")
+                    .frame(width: 150, alignment: .leading)
+                TextField("Entrez le Location Group ID", text: $locID)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+            }
+            HStack {
+                Text("Platform ID:")
+                    .frame(width: 150, alignment: .leading)
+                TextField("Entrez le Platform ID", text: $pID)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+            }
+            HStack {
+                Text("Ownership:")
+                    .frame(width: 150, alignment: .leading)
+                TextField("Entrez l'Ownership", text: $OShip)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+            }
+            HStack {
+                Text("Message Type:")
+                    .frame(width: 150, alignment: .leading)
+                TextField("Entrez le Message Type", text: $MT)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+            }
+            HStack {
+                Text("Chemin Samba:")
+                    .frame(width: 150, alignment: .leading)
+                TextField("Entrez le chemin Samba", text: $sPath)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+            }
+            HStack {
+                Text("Nom d'utilisateur Samba:")
+                    .frame(width: 150, alignment: .leading)
+                TextField("Entrez le nom d'utilisateur Samba", text: $sUsername)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+            }
+            HStack {
+                Text("Mot de passe Samba:")
+                    .frame(width: 150, alignment: .leading)
+                SecureField("Entrez le mot de passe Samba", text: $sPassword)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+            }
             HStack {
                 Button("Enregistrer") {
                     saveConfiguration()
                 }
-                
+                .buttonStyle(.borderedProminent)
+
                 Button("Clear Configuration") {
                     clearConfiguration()
                 }
                 .foregroundColor(.red)
+                .buttonStyle(.bordered)
             }
         }
         .padding()
         .onAppear(perform: loadConfiguration)
     }
-    
-    /// Charger les valeurs existantes depuis Core Data et Keychain
+
+    // Charger les valeurs existantes depuis Core Data et Keychain
     func loadConfiguration() {
         if let config = getAppConfig() {
             locID = config.locationGroupId ?? ""
@@ -800,11 +861,11 @@ struct ConfigurationView: View {
         }
         sUsername = keychain[KeychainKeys.sambaUsername.rawValue] ?? ""
         sPassword = keychain[KeychainKeys.sambaPassword.rawValue] ?? ""
-        
+
         clearStorage()
     }
-    
-    /// Enregistrer les nouvelles valeurs dans Core Data et Keychain
+
+    // Enregistrer les nouvelles valeurs dans Core Data et Keychain
     func saveConfiguration() {
         saveToCoreData(
             locationGroupId: locID,
@@ -815,17 +876,17 @@ struct ConfigurationView: View {
         )
         keychain[KeychainKeys.sambaUsername.rawValue] = sUsername
         keychain[KeychainKeys.sambaPassword.rawValue] = sPassword
-        
+
         clearField()
-        
+
         isConfigured = true
     }
-    
-    ///  Réinitialiser les champs
+
+    // Réinitialiser les champs
     func clearConfiguration() {
         clearField()
     }
-    
+
     func clearField() {
         locID = ""
         pID = ""
