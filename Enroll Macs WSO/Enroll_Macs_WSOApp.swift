@@ -736,6 +736,7 @@ struct AddMachineView: View {
                 onAdd(newMachine)
                 dismiss()
             }
+            .disabled(endUserName.isEmpty || assetNumber.isEmpty || serialNumber.isEmpty || friendlyName.isEmpty)
             
             Button("Annuler") {
                 dismiss()
