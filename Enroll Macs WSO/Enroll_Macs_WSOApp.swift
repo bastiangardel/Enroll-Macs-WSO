@@ -194,25 +194,22 @@ struct FilePickerButton: View {
     let title: String
     let onSelect: (URL) -> Void
     
-    @State private var isPresented = false
-    
     var body: some View {
         Button(title) {
-            isPresented = true
+            openFilePanel()
         }
-        .fileImporter(
-            isPresented: $isPresented,
-            allowedContentTypes: [.commaSeparatedText],
-            allowsMultipleSelection: false
-        ) { result in
-            switch result {
-            case .success(let urls):
-                if let url = urls.first {
-                    onSelect(url)
-                }
-            case .failure(let error):
-                print("Erreur de sélection de fichier : \(error.localizedDescription)")
-            }
+    }
+    
+    private func openFilePanel() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.commaSeparatedText] // Restriction sur les fichiers CSV
+        
+        // Afficher le panneau et gérer le résultat
+        if panel.runModal() == .OK, let selectedURL = panel.url {
+            onSelect(selectedURL)
         }
     }
 }
