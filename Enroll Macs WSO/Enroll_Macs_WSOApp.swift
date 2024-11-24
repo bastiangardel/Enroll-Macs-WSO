@@ -265,12 +265,26 @@ struct CSVImportView: View {
     /// Helper pour les sélecteurs de fichiers avec un checkmark
     func filePickerWithCheckmark(title: String, selectedURL: Binding<URL?>) -> some View {
         HStack {
-            FilePickerButton(title: title) { url in
-                selectedURL.wrappedValue = url
+            VStack(alignment: .leading) {
+                // Affiche le bouton de sélection de fichier
+                FilePickerButton(title: title) { url in
+                    DispatchQueue.main.async {
+                        selectedURL.wrappedValue = url
+                    }
+                }
             }
-            if selectedURL.wrappedValue != nil {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.green)
+            
+            Spacer()  // Espacement entre les colonnes
+            
+            VStack {
+                // Affiche un cercle ou un checkmark selon si l'URL est sélectionnée
+                if selectedURL.wrappedValue != nil {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                } else {
+                    Image(systemName: "circle")
+                        .foregroundColor(.gray)
+                }
             }
         }
         .padding(.bottom)
@@ -279,12 +293,26 @@ struct CSVImportView: View {
     /// Helper pour les sélecteurs de chemins de fichiers avec un checkmark
     func fileSavePickerWithCheckmark(title: String, suggestedFileName: String, selectedURL: Binding<URL?>) -> some View {
         HStack {
-            FileSavePickerButton(title: title, suggestedFileName: suggestedFileName) { url in
-                selectedURL.wrappedValue = url
+            VStack(alignment: .leading) {
+                // Affiche le bouton de sélection de fichier
+                FileSavePickerButton(title: title, suggestedFileName: suggestedFileName) { url in
+                    DispatchQueue.main.async {
+                        selectedURL.wrappedValue = url
+                    }
+                }
             }
-            if selectedURL.wrappedValue != nil {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.green)
+            
+            Spacer()  // Permet d'espacer les deux colonnes
+            
+            VStack {
+                // Affiche un cercle ou un checkmark selon si le chemin de fichier est sélectionné
+                if selectedURL.wrappedValue != nil {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                } else {
+                    Image(systemName: "circle")
+                        .foregroundColor(.gray)
+                }
             }
         }
         .padding(.bottom)
