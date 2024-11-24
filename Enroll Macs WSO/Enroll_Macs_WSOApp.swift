@@ -937,9 +937,28 @@ struct Enroll_Macs_WSOApp: App {
         WindowGroup {
             if isConfigured {
                 MachineListView()
+                    .frame(minWidth: 900, minHeight: 400) // Taille minimum du contenu
+                    .background(WindowConfigurator())
             } else {
                 ConfigurationView(isConfigured: $isConfigured)
+                    .frame(minWidth: 900, minHeight: 400) // Taille minimum du contenu
+                    .background(WindowConfigurator())
             }
+        }
+    }
+}
+
+// MARK: - Configurateur de fenêtre
+struct WindowConfigurator: View {
+    var body: some View {
+        GeometryReader { geometry in
+            Color.clear
+                .onAppear {
+                    // Configurer la taille minimale de la fenêtre
+                    if let window = NSApplication.shared.keyWindow {
+                        window.minSize = geometry.size
+                    }
+                }
         }
     }
 }
@@ -947,6 +966,9 @@ struct Enroll_Macs_WSOApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return true
+    }
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Configuration supplémentaire si nécessaire
     }
 }
 
