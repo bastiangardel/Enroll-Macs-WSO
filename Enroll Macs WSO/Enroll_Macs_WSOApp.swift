@@ -110,6 +110,8 @@ func getAppConfig() -> AppConfig? {
     return try? context.fetch(request).first
 }
 
+
+
 // MARK: - Samba Storage Helper
 func saveFileToSamba(filename: String, content: Data, completion: @escaping (Bool, String) -> Void) {
     guard let config = getAppConfig(),
@@ -404,7 +406,7 @@ struct CSVImportView: View {
             }
         }
         
-        for nameRow in nameData {
+        for nameRow in normalizedNameData {
             guard let name = nameRow["name"] else { continue }
             if nameToComputerMatches[name] == nil {
                 missingResults.append(["name": name])
@@ -463,6 +465,7 @@ struct CSVImportView: View {
 struct MachineListView: View {
     @AppStorage("isConfigured") private var isConfigured: Bool = true
     @State private var machines: [Machine] = []
+    
     @State private var statusMessage: String = ""
     @State private var showAddMachineView = false
     @State private var selectedMachines: Set<UUID> = [] // Set to track selected machines for deletion
@@ -471,6 +474,8 @@ struct MachineListView: View {
     @State private var isProcessing: Bool = false // Indicateur d'état de traitement
     @State private var progress: Double = 0.0 // Progression en pourcentage
     @State private var showCSVImportView: Bool = false // Progression en pourcentage
+    
+    
     
     var body: some View {
         VStack {
@@ -746,6 +751,7 @@ struct AddMachineView: View {
         .padding()
     }
 }
+
 
 // MARK: - Configuration Vue
 struct ConfigurationView: View {
