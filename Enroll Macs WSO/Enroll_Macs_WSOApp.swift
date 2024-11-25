@@ -13,6 +13,7 @@ import SMBClient
 import LocalAuthentication
 import UniformTypeIdentifiers
 import AppKit
+import Cocoa
 
 
 // MARK: - Outils
@@ -760,6 +761,7 @@ struct MachineListView: View {
     func applicationShouldTerminateAfterLastWindowClosed(_ theApplication: NSApplication) -> Bool {
         return true
     }
+    
 }
 
 // MARK: - Vue pour ajouter une machine
@@ -816,7 +818,7 @@ struct ConfigurationView: View {
     @State private var sPath = ""
     @State private var sUsername = ""
     @State private var sPassword = ""
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
@@ -866,7 +868,7 @@ struct ConfigurationView: View {
                     saveConfiguration()
                 }
                 .buttonStyle(.borderedProminent)
-
+                
                 Button("Clear Configuration") {
                     clearConfiguration()
                 }
@@ -877,7 +879,7 @@ struct ConfigurationView: View {
         .padding()
         .onAppear(perform: loadConfiguration)
     }
-
+    
     // Charger les valeurs existantes depuis Core Data et Keychain
     func loadConfiguration() {
         if let config = getAppConfig() {
@@ -889,10 +891,10 @@ struct ConfigurationView: View {
         }
         sUsername = keychain[KeychainKeys.sambaUsername.rawValue] ?? ""
         sPassword = keychain[KeychainKeys.sambaPassword.rawValue] ?? ""
-
+        
         clearStorage()
     }
-
+    
     // Enregistrer les nouvelles valeurs dans Core Data et Keychain
     func saveConfiguration() {
         saveToCoreData(
@@ -904,17 +906,17 @@ struct ConfigurationView: View {
         )
         keychain[KeychainKeys.sambaUsername.rawValue] = sUsername
         keychain[KeychainKeys.sambaPassword.rawValue] = sPassword
-
+        
         clearField()
-
+        
         isConfigured = true
     }
-
+    
     // Réinitialiser les champs
     func clearConfiguration() {
         clearField()
     }
-
+    
     func clearField() {
         locID = ""
         pID = ""
@@ -938,46 +940,79 @@ struct Enroll_Macs_WSOApp: App {
             if isConfigured {
                 MachineListView()
                     .frame(minWidth: 900, minHeight: 400) // Taille minimum du contenu
-                    .background(WindowConfigurator())
             } else {
                 ConfigurationView(isConfigured: $isConfigured)
                     .frame(minWidth: 900, minHeight: 400) // Taille minimum du contenu
-                    .background(WindowConfigurator())
             }
+        }
+        .commands {
+            AppMenu()
+            FileMenu()
+            EditMenu()
         }
     }
 }
 
-// MARK: - Configurateur de fenêtre
-struct WindowConfigurator: View {
-    var body: some View {
-        GeometryReader { geometry in
-            Color.clear
-                .onAppear {
-                    // Configurer la taille minimale de la fenêtre
-                    if let window = NSApplication.shared.keyWindow {
-                        window.minSize = geometry.size
-                    }
-                }
+// MARK: - Menus
+
+struct AppMenu: Commands {
+    var body: some Commands {
+        CommandGroup(replacing: .appInfo) {
+            Button("À propos de l'application") {
+                NSApplication.shared.orderFrontStandardAboutPanel(nil)
+            }
+        }
+        
+        CommandGroup(replacing: .appTermination) {
+            Button("Quitter") {
+                NSApplication.shared.terminate(nil)
+            }
+            .keyboardShortcut("q")
         }
     }
 }
+
+struct FileMenu: Commands {
+    var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            // Supprime le groupe "Nouveau"
+        }
+        
+        CommandGroup(after: .newItem) {
+            Button("Fermer la fenêtre") {
+                if let keyWindow = NSApplication.shared.keyWindow {
+                    keyWindow.performClose(nil)
+                }
+            }
+            .keyboardShortcut("w")
+        }
+    }
+}
+
+struct EditMenu: Commands {
+    var body: some Commands {
+        CommandGroup(replacing: .pasteboard) {
+            Button("Couper") {
+                NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil)
+            }
+            .keyboardShortcut("x")
+            
+            Button("Copier") {
+                NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)
+            }
+            .keyboardShortcut("c")
+            
+            Button("Coller") {
+                NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil)
+            }
+            .keyboardShortcut("v")
+        }
+    }
+}
+
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return true
-    }
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        // Configuration supplémentaire si nécessaire
-    }
-}
-
-
-extension View {
-    func getHostingWindow() -> NSWindow? {
-        guard let window = NSApplication.shared.windows.first(where: { $0.isKeyWindow }) else {
-            return nil
-        }
-        return window
     }
 }
