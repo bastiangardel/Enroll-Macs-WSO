@@ -16,6 +16,8 @@ import AppKit
 import Cocoa
 
 
+
+
 // MARK: - Outils
 func normalizeKeys(_ dictionary: [String: String]) -> [String: String] {
     var normalized = [String: String]()
@@ -29,6 +31,12 @@ func normalizeKeys(_ dictionary: [String: String]) -> [String: String] {
     return normalized
 }
 
+prefix func ! (value: Binding<Bool>) -> Binding<Bool> {
+    Binding<Bool>(
+        get: { !value.wrappedValue },
+        set: { value.wrappedValue = !$0 }
+    )
+}
 
 // MARK: - Modèles JSON
 struct Machine: Identifiable, Encodable {
@@ -646,6 +654,10 @@ struct MachineListView: View {
                     isConfigured = false // Retourne temporairement à la vue de configuration
                 }
                 .disabled(isProcessing)
+                .sheet(isPresented: !$isConfigured){
+                    ConfigurationView(isConfigured: $isConfigured)
+                        .frame(minWidth: 900, minHeight: 400)
+                }
                 
                 Button("Close App") {
                     NSApp.terminate(nil)
@@ -810,7 +822,9 @@ struct AddMachineView: View {
 
 // MARK: - Configuration Vue
 struct ConfigurationView: View {
+    @Environment(\.dismiss) var dismiss
     @Binding var isConfigured: Bool
+    @State private var showAlert = false
     @State private var locID = ""
     @State private var pID = ""
     @State private var OShip = ""
@@ -871,10 +885,30 @@ struct ConfigurationView: View {
                 .disabled(locID.isEmpty || pID.isEmpty || OShip.isEmpty || MT.isEmpty || sPath.isEmpty)
                 
                 Button("Clear Configuration") {
-                    clearConfiguration()
+                    clearField()
                 }
                 .foregroundColor(.red)
                 .buttonStyle(.bordered)
+                
+                Button("Close App") {
+                    if(!locID.isEmpty && !pID.isEmpty && !OShip.isEmpty && !MT.isEmpty && !sPath.isEmpty){
+                        saveConfiguration()
+                        exit(0)
+                    }else{
+                        isConfigured = false
+                        showAlert = true
+                    }
+                }
+                .alert(isPresented: $showAlert) {
+                    Alert(
+                                    title: Text("Confirmer la fermeture"),
+                                    message: Text("La config est vide ou incompléte, elle sera donc pas enregistrée.\nVoulez-vous vraiment quitter l'application ?"),
+                                    primaryButton: .destructive(Text("Quitter")) {
+                                        exit(0)
+                                    },
+                                    secondaryButton: .cancel()
+                                )
+                }
             }
         }
         .padding()
@@ -908,16 +942,12 @@ struct ConfigurationView: View {
         keychain[KeychainKeys.sambaUsername.rawValue] = sUsername
         keychain[KeychainKeys.sambaPassword.rawValue] = sPassword
         
-        clearField()
+        //clearField()
         
         isConfigured = true
     }
     
     // Réinitialiser les champs
-    func clearConfiguration() {
-        clearField()
-    }
-    
     func clearField() {
         locID = ""
         pID = ""
@@ -930,22 +960,44 @@ struct ConfigurationView: View {
 }
 
 // MARK: - Main
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return true
+    }
+    
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        let _ = NSApplication.shared.windows.map { $0.tabbingMode = .disallowed }
+        
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            fatalError("Metal is not supported on this device")
+        }
+    }
+    
+    
+}
+
 @main
 struct Enroll_Macs_WSOApp: App {
     @AppStorage("isConfigured") private var isConfigured: Bool = false
     
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
+    
     var body: some Scene {
         WindowGroup {
-            if isConfigured {
-                MachineListView()
-                    .frame(minWidth: 900, minHeight: 400) // Taille minimum du contenu
-            } else {
-                ConfigurationView(isConfigured: $isConfigured)
-                    .frame(minWidth: 900, minHeight: 400) // Taille minimum du contenu
-            }
+//            if isConfigured {
+//                MachineListView()
+//                    .frame(minWidth: 900, minHeight: 400) // Taille minimum du contenu
+//            } else {
+//                ConfigurationView(isConfigured: $isConfigured)
+//                    .frame(minWidth: 900, minHeight: 400) // Taille minimum du contenu
+//            }
+            
+            MachineListView()
+                .frame(minWidth: 900, minHeight: 400) // Taille minimum du contenu
+            
         }
+        .commandsRemoved()
         .commands {
             AppMenu()
             FileMenu()
@@ -955,7 +1007,6 @@ struct Enroll_Macs_WSOApp: App {
 }
 
 // MARK: - Menus
-
 struct AppMenu: Commands {
     var body: some Commands {
         CommandGroup(replacing: .appInfo) {
@@ -1012,8 +1063,4 @@ struct EditMenu: Commands {
 }
 
 
-class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        return true
-    }
-}
+
