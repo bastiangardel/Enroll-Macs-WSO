@@ -566,44 +566,75 @@ struct MachineListView: View {
             HStack {
                 Spacer()
                     .frame(width: 20) // Marge avant la première colonne
-                Text("Friendly Name")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .onTapGesture {
-                        sortMachines(by: "friendlyName")
+                HStack(spacing: 4) {
+                    Text("Friendly Name")
+                        .font(.headline)
+                    if sortKey == "friendlyName" {
+                        Image(systemName: sortOrder == .ascending ? "arrow.down" : "arrow.up")
+                            .font(.caption)
+                            .foregroundColor(.gray)
                     }
-                    .padding(.trailing, 5)
-
-                Text("End User Name")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .onTapGesture {
-                        sortMachines(by: "endUserName")
-                    }
-                    .padding(.trailing, 5)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onTapGesture {
+                    sortMachines(by: "friendlyName")
+                }
                 
-                Text("Asset Number")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .onTapGesture {
-                        sortMachines(by: "assetNumber")
+                HStack(spacing: 4) {
+                    Text("End User Name")
+                        .font(.headline)
+                    if sortKey == "endUserName" {
+                        Image(systemName: sortOrder == .ascending ? "arrow.down" : "arrow.up")
+                            .font(.caption)
+                            .foregroundColor(.gray)
                     }
-                    .padding(.trailing, 5)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onTapGesture {
+                    sortMachines(by: "endUserName")
+                }
                 
-                Text("Location Group ID")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .onTapGesture {
-                        sortMachines(by: "locationGroupId")
+                HStack(spacing: 4) {
+                    Text("Asset Number")
+                        .font(.headline)
+                    if sortKey == "assetNumber" {
+                        Image(systemName: sortOrder == .ascending ? "arrow.down" : "arrow.up")
+                            .font(.caption)
+                            .foregroundColor(.gray)
                     }
-                    .padding(.trailing, 5)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onTapGesture {
+                    sortMachines(by: "assetNumber")
+                }
                 
-                Text("Serial Number")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .onTapGesture {
-                        sortMachines(by: "serialNumber")
+                HStack(spacing: 4) {
+                    Text("Location Group ID")
+                        .font(.headline)
+                    if sortKey == "locationGroupId" {
+                        Image(systemName: sortOrder == .ascending ? "arrow.down" : "arrow.up")
+                            .font(.caption)
+                            .foregroundColor(.gray)
                     }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onTapGesture {
+                    sortMachines(by: "locationGroupId")
+                }
+                
+                HStack(spacing: 4) {
+                    Text("Serial Number")
+                        .font(.headline)
+                    if sortKey == "serialNumber" {
+                        Image(systemName: sortOrder == .ascending ? "arrow.down" : "arrow.up")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onTapGesture {
+                    sortMachines(by: "serialNumber")
+                }
             }
             .padding(.bottom, 5)
             
@@ -635,6 +666,9 @@ struct MachineListView: View {
                     }
                 }
                 .onDelete(perform: deleteMachines) // Swipe to delete individual machine
+                .onAppear() {
+                    sortMachines(by: sortKey)
+                }
             }
             .listStyle(DefaultListStyle()) // Style pour macOS
             
@@ -657,6 +691,7 @@ struct MachineListView: View {
                     CSVImportView { importedMachines in
                         machines.append(contentsOf: importedMachines)
                         showStatusMessage("\(importedMachines.count) machine(s) importée(s) avec succès !")
+                        sortMachines(by: sortKey)
                     }
                 }
                 
@@ -699,6 +734,7 @@ struct MachineListView: View {
             AddMachineView { newMachine in
                 machines.append(newMachine)
                 showStatusMessage("Machine ajoutée avec succès !")
+                sortMachines(by: sortKey)
             }
         }
     }
