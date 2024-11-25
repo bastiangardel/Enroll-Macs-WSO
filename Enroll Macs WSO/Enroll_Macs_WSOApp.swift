@@ -38,6 +38,10 @@ prefix func ! (value: Binding<Bool>) -> Binding<Bool> {
     )
 }
 
+enum SortOrder {
+    case ascending, descending
+}
+
 // MARK: - Modèles JSON
 struct Machine: Identifiable, Encodable {
     let id = UUID()
@@ -537,7 +541,9 @@ struct MachineListView: View {
     @State private var progress: Double = 0.0 // Progression en pourcentage
     @State private var showCSVImportView: Bool = false // Progression en pourcentage
     
-    
+    // Nouveaux états pour gérer le tri
+    @State private var sortOrder: SortOrder = .ascending
+    @State private var sortKey: String = "friendlyName"
     
     var body: some View {
         VStack {
@@ -563,18 +569,41 @@ struct MachineListView: View {
                 Text("Friendly Name")
                     .font(.headline)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .onTapGesture {
+                        sortMachines(by: "friendlyName")
+                    }
+                    .padding(.trailing, 5)
+
                 Text("End User Name")
                     .font(.headline)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .onTapGesture {
+                        sortMachines(by: "endUserName")
+                    }
+                    .padding(.trailing, 5)
+                
                 Text("Asset Number")
                     .font(.headline)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .onTapGesture {
+                        sortMachines(by: "assetNumber")
+                    }
+                    .padding(.trailing, 5)
+                
                 Text("Location Group ID")
                     .font(.headline)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .onTapGesture {
+                        sortMachines(by: "locationGroupId")
+                    }
+                    .padding(.trailing, 5)
+                
                 Text("Serial Number")
                     .font(.headline)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .onTapGesture {
+                        sortMachines(by: "serialNumber")
+                    }
             }
             .padding(.bottom, 5)
             
@@ -671,6 +700,32 @@ struct MachineListView: View {
                 machines.append(newMachine)
                 showStatusMessage("Machine ajoutée avec succès !")
             }
+        }
+    }
+    
+    // Fonction de tri
+    func sortMachines(by key: String) {
+        if sortKey == key {
+            // Inverser l'ordre de tri si on clique sur la même colonne
+            sortOrder = (sortOrder == .ascending) ? .descending : .ascending
+        } else {
+            sortKey = key
+            sortOrder = .ascending
+        }
+        
+        switch sortKey {
+        case "friendlyName":
+            machines.sort { sortOrder == .ascending ? $0.friendlyName < $1.friendlyName : $0.friendlyName > $1.friendlyName }
+        case "endUserName":
+            machines.sort { sortOrder == .ascending ? $0.endUserName < $1.endUserName : $0.endUserName > $1.endUserName }
+        case "assetNumber":
+            machines.sort { sortOrder == .ascending ? $0.assetNumber < $1.assetNumber : $0.assetNumber > $1.assetNumber }
+        case "locationGroupId":
+            machines.sort { sortOrder == .ascending ? $0.locationGroupId < $1.locationGroupId : $0.locationGroupId > $1.locationGroupId }
+        case "serialNumber":
+            machines.sort { sortOrder == .ascending ? $0.serialNumber < $1.serialNumber : $0.serialNumber > $1.serialNumber }
+        default:
+            break
         }
     }
     
