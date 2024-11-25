@@ -15,9 +15,6 @@ import UniformTypeIdentifiers
 import AppKit
 import Cocoa
 
-
-
-
 // MARK: - Outils
 func normalizeKeys(_ dictionary: [String: String]) -> [String: String] {
     var normalized = [String: String]()
@@ -464,7 +461,6 @@ struct CSVImportView: View {
                     }
                 }
             }
-            
         }
         
         // Détecter doublons et manquants
@@ -486,13 +482,24 @@ struct CSVImportView: View {
             }
         }
         
-        // Exporter missing.csv et doublons.csv
-        do {
-            try exportCSV(data: missingResults, to: missingURL)
-            try exportCSV(data: doublonsResults, to: doublonsURL)
-        } catch {
-            print("Erreur lors de l'export des fichiers CSV : \(error.localizedDescription)")
+        // Exporter missing.csv
+        if(!missingResults.isEmpty){
+            do {
+                try exportCSV(data: missingResults, to: missingURL)
+            } catch {
+                print("Erreur lors de l'export des fichiers CSV : \(error.localizedDescription)")
+            }
         }
+        
+        // Exporter doublons.csv
+        if(!doublonsResults.isEmpty){
+            do {
+                try exportCSV(data: doublonsResults, to: doublonsURL)
+            } catch {
+                print("Erreur lors de l'export des fichiers CSV : \(error.localizedDescription)")
+            }
+        }
+        
         
         // Étape 2 : Générer des fichiers JSON basés sur nextmigrationlist.csv et inventory.csv
         for result in results {
@@ -1009,13 +1016,13 @@ struct ConfigurationView: View {
                 }
                 .alert(isPresented: $showAlert) {
                     Alert(
-                                    title: Text("Confirmer la fermeture"),
-                                    message: Text("La config est vide ou incompléte, elle sera donc pas enregistrée.\nVoulez-vous vraiment quitter l'application ?"),
-                                    primaryButton: .destructive(Text("Quitter")) {
-                                        exit(0)
-                                    },
-                                    secondaryButton: .cancel()
-                                )
+                        title: Text("Confirmer la fermeture"),
+                        message: Text("La config est vide ou incompléte, elle sera donc pas enregistrée.\nVoulez-vous vraiment quitter l'application ?"),
+                        primaryButton: .destructive(Text("Quitter")) {
+                            exit(0)
+                        },
+                        secondaryButton: .cancel()
+                    )
                 }
             }
         }
@@ -1076,12 +1083,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let _ = NSApplication.shared.windows.map { $0.tabbingMode = .disallowed }
         
-        guard let device = MTLCreateSystemDefaultDevice() else {
+        guard MTLCreateSystemDefaultDevice() != nil else {
             fatalError("Metal is not supported on this device")
         }
     }
-    
-    
 }
 
 @main
@@ -1090,20 +1095,10 @@ struct Enroll_Macs_WSOApp: App {
     
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
-    
     var body: some Scene {
         WindowGroup {
-//            if isConfigured {
-//                MachineListView()
-//                    .frame(minWidth: 900, minHeight: 400) // Taille minimum du contenu
-//            } else {
-//                ConfigurationView(isConfigured: $isConfigured)
-//                    .frame(minWidth: 900, minHeight: 400) // Taille minimum du contenu
-//            }
-            
             MachineListView()
                 .frame(minWidth: 900, minHeight: 400) // Taille minimum du contenu
-            
         }
         .commandsRemoved()
         .commands {
@@ -1169,6 +1164,3 @@ struct EditMenu: Commands {
         }
     }
 }
-
-
-
