@@ -715,15 +715,25 @@ struct MachineListView: View {
         
         switch sortKey {
         case "friendlyName":
-            machines.sort { sortOrder == .ascending ? $0.friendlyName < $1.friendlyName : $0.friendlyName > $1.friendlyName }
+            machines.sort { sortOrder == .ascending ?
+                $0.friendlyName.localizedCaseInsensitiveCompare($1.friendlyName) == .orderedAscending :
+                $0.friendlyName.localizedCaseInsensitiveCompare($1.friendlyName) == .orderedDescending }
         case "endUserName":
-            machines.sort { sortOrder == .ascending ? $0.endUserName < $1.endUserName : $0.endUserName > $1.endUserName }
+            machines.sort { sortOrder == .ascending ?
+                $0.endUserName.localizedCaseInsensitiveCompare($1.endUserName) == .orderedAscending :
+                $0.endUserName.localizedCaseInsensitiveCompare($1.endUserName) == .orderedDescending }
         case "assetNumber":
-            machines.sort { sortOrder == .ascending ? $0.assetNumber < $1.assetNumber : $0.assetNumber > $1.assetNumber }
+            machines.sort { sortOrder == .ascending ?
+                $0.assetNumber.localizedCaseInsensitiveCompare($1.assetNumber) == .orderedAscending :
+                $0.assetNumber.localizedCaseInsensitiveCompare($1.assetNumber) == .orderedDescending }
         case "locationGroupId":
-            machines.sort { sortOrder == .ascending ? $0.locationGroupId < $1.locationGroupId : $0.locationGroupId > $1.locationGroupId }
+            machines.sort { sortOrder == .ascending ?
+                $0.locationGroupId < $1.locationGroupId :
+                $0.locationGroupId > $1.locationGroupId }
         case "serialNumber":
-            machines.sort { sortOrder == .ascending ? $0.serialNumber < $1.serialNumber : $0.serialNumber > $1.serialNumber }
+            machines.sort { sortOrder == .ascending ?
+                $0.serialNumber.localizedCaseInsensitiveCompare($1.serialNumber) == .orderedAscending :
+                $0.serialNumber.localizedCaseInsensitiveCompare($1.serialNumber) == .orderedDescending }
         default:
             break
         }
