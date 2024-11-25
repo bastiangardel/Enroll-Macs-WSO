@@ -432,6 +432,7 @@ struct CSVImportView: View {
         
         let normalizedOcsData = ocsData.map { normalizeKeys($0) }
         let normalizedNameData = nameData.map { normalizeKeys($0) }
+        let normalizedInventoryData = inventoryData.map { normalizeKeys($0) }
         
         for ocsRow in normalizedOcsData {
             guard let computerName = ocsRow["computername"] ,
@@ -440,21 +441,27 @@ struct CSVImportView: View {
                 continue }
             
             for nameRow in normalizedNameData {
-                guard let name = nameRow["name"] else {continue }
+                guard let name = nameRow["name"] else { continue }
                 
-                // Vérifier si computerName contient le nom (insensible à la casse)
-                if computerName.range(of: name, options: .caseInsensitive) != nil {
-                    if nameToComputerMatches[name] == nil {
-                        nameToComputerMatches[name] = []
+                // Construire une expression régulière qui vérifie si `computerName` contient toutes les lettres de `name` dans l'ordre (insensible à la casse)
+                let pattern = name.map { NSRegularExpression.escapedPattern(for: String($0)) }.joined(separator: ".*")
+                
+                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                    let range = NSRange(location: 0, length: computerName.utf16.count)
+                    if regex.firstMatch(in: computerName, options: [], range: range) != nil {
+                        // Si le nom est trouvé dans computerName
+                        if nameToComputerMatches[name] == nil {
+                            nameToComputerMatches[name] = []
+                        }
+                        nameToComputerMatches[name]?.append(computerName)
+                        
+                        // Ajouter aux résultats
+                        results.append([
+                            "computername": computerName,
+                            "username": userName,
+                            "serialnumber": serialNumber
+                        ])
                     }
-                    nameToComputerMatches[name]?.append(computerName)
-                    
-                    // Ajouter aux résultats
-                    results.append([
-                        "computername": computerName,
-                        "username": userName,
-                        "serialnumber": serialNumber
-                    ])
                 }
             }
             
@@ -497,7 +504,7 @@ struct CSVImportView: View {
             let sourceSerialLast6 = String(sourceSerial.suffix(6))
             
             // Trouver les correspondances dans inventory.csv
-            let matchingInventory = inventoryData.filter {
+            let matchingInventory = normalizedInventoryData.filter {
                 guard let inventorySerial = $0["serialnumber"] else { return false }
                 return inventorySerial.suffix(6) == sourceSerialLast6
             }
