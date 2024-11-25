@@ -868,6 +868,7 @@ struct ConfigurationView: View {
                     saveConfiguration()
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(locID.isEmpty || pID.isEmpty || OShip.isEmpty || MT.isEmpty || sPath.isEmpty)
                 
                 Button("Clear Configuration") {
                     clearConfiguration()
