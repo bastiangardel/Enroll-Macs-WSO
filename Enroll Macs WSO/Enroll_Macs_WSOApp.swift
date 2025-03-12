@@ -50,6 +50,13 @@ struct Machine: Identifiable, Encodable {
     var platformId: Int
     var friendlyName: String
     var ownership: String
+    var employeeType: String
+    var vpnSelect: String
+    var tableau: String
+    var filemaker: String
+    var mindmanager: String
+    var devicetype: String
+    var SCIPER: String
     
     // Définir des clés personnalisées pour l'encodage
     enum CodingKeys: String, CodingKey {
@@ -61,6 +68,13 @@ struct Machine: Identifiable, Encodable {
         case platformId = "PlatformId"
         case friendlyName = "FriendlyName"
         case ownership = "Ownership"
+        case employeeType = "employeetype"
+        case vpnSelect = "vpnguestmac"
+        case tableau = "tableaumac"
+        case filemaker = "filemakermac"
+        case mindmanager = "mindmanagermac"
+        case devicetype = "devicetype"
+        case SCIPER = "SCIPER"
     }
     
     func toJSON() -> Data? {
