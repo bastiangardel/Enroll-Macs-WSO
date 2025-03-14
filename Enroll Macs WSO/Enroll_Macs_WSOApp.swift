@@ -50,13 +50,13 @@ struct Machine: Identifiable, Encodable {
     var platformId: Int
     var friendlyName: String
     var ownership: String
-    var employeeType: String
-    var vpnSelect: String
-    var tableau: String
-    var filemaker: String
-    var mindmanager: String
-    var devicetype: String
-    var SCIPER: String
+//    var employeeType: String
+//    var vpnSelect: String
+//    var tableau: String
+//    var filemaker: String
+//    var mindmanager: String
+//    var devicetype: String
+//    var SCIPER: String
     
     // Définir des clés personnalisées pour l'encodage
     enum CodingKeys: String, CodingKey {
@@ -68,13 +68,13 @@ struct Machine: Identifiable, Encodable {
         case platformId = "PlatformId"
         case friendlyName = "FriendlyName"
         case ownership = "Ownership"
-        case employeeType = "employeetype"
-        case vpnSelect = "vpnguestmac"
-        case tableau = "tableaumac"
-        case filemaker = "filemakermac"
-        case mindmanager = "mindmanagermac"
-        case devicetype = "devicetype"
-        case SCIPER = "SCIPER"
+//        case employeeType = "employeetype"
+//        case vpnSelect = "vpnguestmac"
+//        case tableau = "tableaumac"
+//        case filemaker = "filemakermac"
+//        case mindmanager = "mindmanagermac"
+//        case devicetype = "devicetype"
+//        case SCIPER = "SCIPER"
     }
     
     func toJSON() -> Data? {
@@ -544,6 +544,7 @@ struct CSVImportView: View {
                     platformId: Int(platformId),
                     friendlyName: sourceComputerName,
                     ownership: ownership
+                    
                 )
                 outputMachines.append(machine)
             }
@@ -910,19 +911,97 @@ struct AddMachineView: View {
     @Environment(\.dismiss) var dismiss
     var onAdd: (Machine) -> Void
     
+    @State private var selectedEmployee: String? = nil
+    @State private var selectedVPN: String? = nil
+    @State private var selectedSAP: String? = nil
+    @State private var selectedFileMaker: String? = nil
+    @State private var selectedTableau: [String] = []
+    
+    @State private var dwgTrueViewSelected = false
+    @State private var kesoKEntrySelected = false
+    @State private var inDesignCS4Selected = false
+    @State private var openTextSelected = false
+    @State private var sunetPlusSelected = false
+    @State private var mindmanagerSelected = false
+    
     @State private var endUserName = ""
     @State private var assetNumber = ""
     @State private var serialNumber = ""
     @State private var friendlyName = ""
     
+    let columns = [
+        GridItem(.flexible(minimum: 200, maximum: 300)),
+        GridItem(.flexible(minimum: 200, maximum: 300)),
+        GridItem(.flexible(minimum: 200, maximum: 300))
+    ]
+    
     var body: some View {
-        Form {
-            TextField("Nom d'utilisateur final", text: $endUserName)
-            TextField("Numéro d'actif", text: $assetNumber)
-            TextField("Numéro de série", text: $serialNumber)
-            TextField("Nom convivial", text: $friendlyName)
-            
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                
+                // Aligner les champs de saisie avec labels
+                VStack(spacing: 10) {
+                    HStack {
+                        Text("Nom d'utilisateur final").frame(width: 180, alignment: .leading)
+                        TextField("Entrez le nom", text: $endUserName)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    HStack {
+                        Text("Numéro d'actif").frame(width: 180, alignment: .leading)
+                        TextField("Entrez le numéro", text: $assetNumber)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    HStack {
+                        Text("Numéro de série").frame(width: 180, alignment: .leading)
+                        TextField("Entrez le numéro", text: $serialNumber)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    HStack {
+                        Text("Nom convivial").frame(width: 180, alignment: .leading)
+                        TextField("Entrez un nom", text: $friendlyName)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                }
+                .padding(.horizontal)
+
+                // Organisation des sélections et toggles
+                LazyVGrid(columns: columns, spacing: 20) {
+                    SectionView(title: "Employee Type", options: ["Personnel", "Hôte", "Hors-EPFL"], selection: $selectedEmployee)
+                    SectionView(title: "VPN Guest", options: ["SSC", "SAP", "AGA"], selection: $selectedVPN)
+                    SectionView(title: "SAP", options: ["Config EPFL", "Config CCSAP"], selection: $selectedSAP)
+                    SectionView(title: "FileMaker", options: ["TTO-AJ", "OHSPR-DSE", "Autres"], selection: $selectedFileMaker)
+
+                    Toggle("DWG TrueView", isOn: $dwgTrueViewSelected)
+                    Toggle("Keso K-Entry", isOn: $kesoKEntrySelected)
+                    Toggle("InDesign CS4", isOn: $inDesignCS4Selected)
+                    Toggle("OpenText", isOn: $openTextSelected)
+                    Toggle("SunetPlus", isOn: $sunetPlusSelected)
+                    Toggle("MindManager", isOn: $mindmanagerSelected)
+
+                    MultipleSelectionView(title: "Tableau", options: ["Desktop", "Prep"], selections: $selectedTableau)
+                }
+                .padding(.horizontal)
+            }
+            .padding()
+        }
+        
+        // Boutons centrés
+        HStack {
             Button("Ajouter") {
+                
+                print("Configuration sélectionnée :")
+                print("Employee Type: \(selectedEmployee ?? "None")")
+                print("VPN Guest: \(selectedVPN ?? "None")")
+                print("SAP: \(selectedSAP ?? "None")")
+                print("FileMaker: \(selectedFileMaker ?? "None")")
+                print("Tableau: \(selectedTableau.joined(separator: ", "))")
+                print("DWG TrueView: \(dwgTrueViewSelected ? "Oui" : "Non")")
+                print("Keso K-Entry: \(kesoKEntrySelected ? "Oui" : "Non")")
+                print("InDesign CS4: \(inDesignCS4Selected ? "Oui" : "Non")")
+                print("OpenText: \(openTextSelected ? "Oui" : "Non")")
+                print("SunetPlus: \(sunetPlusSelected ? "Oui" : "Non")")
+                print("MindManager: \(mindmanagerSelected ? "Oui" : "Non")")
+                
                 let config = getAppConfig()
                 let newMachine = Machine(
                     endUserName: endUserName,
@@ -938,13 +1017,73 @@ struct AddMachineView: View {
                 dismiss()
             }
             .disabled(endUserName.isEmpty || assetNumber.isEmpty || serialNumber.isEmpty || friendlyName.isEmpty)
+            .buttonStyle(.borderedProminent)
             
             Button("Annuler") {
                 dismiss()
             }
-            
+            .buttonStyle(.bordered)
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+    }
+}
+
+struct SectionView: View {
+    let title: String
+    let options: [String]
+    @Binding var selection: String?
+    
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text(title).font(.headline)
+            ForEach(options, id: \.self) { option in
+                RadioButton(title: option, selection: $selection)
+            }
         }
         .padding()
+        .border(Color.gray, width: 1)
+    }
+}
+
+struct MultipleSelectionView: View {
+    let title: String
+    let options: [String]
+    @Binding var selections: [String]
+    
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text(title).font(.headline)
+            ForEach(options, id: \.self) { option in
+                Toggle(option, isOn: Binding(
+                    get: { selections.contains(option) },
+                    set: { newValue in
+                        if newValue {
+                            selections.append(option)
+                        } else {
+                            selections.removeAll { $0 == option }
+                        }
+                    }
+                ))
+            }
+        }
+        .padding()
+        .border(Color.gray, width: 1)
+    }
+}
+
+struct RadioButton: View {
+    let title: String
+    @Binding var selection: String?
+    
+    var body: some View {
+        Button(action: { selection = title }) {
+            HStack {
+                Image(systemName: selection == title ? "largecircle.fill.circle" : "circle")
+                Text(title)
+            }
+        }
+        .buttonStyle(.plain)
     }
 }
 
