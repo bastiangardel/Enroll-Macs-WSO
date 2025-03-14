@@ -50,13 +50,13 @@ struct Machine: Identifiable, Encodable {
     var platformId: Int
     var friendlyName: String
     var ownership: String
-//    var employeeType: String
-//    var vpnSelect: String
-//    var tableau: String
-//    var filemaker: String
-//    var mindmanager: String
-//    var devicetype: String
-//    var SCIPER: String
+    var employeeType: String
+    var vpnSelect: String
+    var tableau: String
+    var filemaker: String
+    var mindmanager: String
+    var devicetype: String
+    var SCIPER: String
     
     // Définir des clés personnalisées pour l'encodage
     enum CodingKeys: String, CodingKey {
@@ -68,13 +68,13 @@ struct Machine: Identifiable, Encodable {
         case platformId = "PlatformId"
         case friendlyName = "FriendlyName"
         case ownership = "Ownership"
-//        case employeeType = "employeetype"
-//        case vpnSelect = "vpnguestmac"
-//        case tableau = "tableaumac"
-//        case filemaker = "filemakermac"
-//        case mindmanager = "mindmanagermac"
-//        case devicetype = "devicetype"
-//        case SCIPER = "SCIPER"
+        case employeeType = "employeetype"
+        case vpnSelect = "vpnguestmac"
+        case tableau = "tableaumac"
+        case filemaker = "filemakermac"
+        case mindmanager = "mindmanagermac"
+        case devicetype = "devicetype"
+        case SCIPER = "SCIPER"
     }
     
     func toJSON() -> Data? {
@@ -530,7 +530,7 @@ struct CSVImportView: View {
                 return inventorySerial.suffix(6) == sourceSerialLast6
             }
             
-            // Générer des objets Machine et JSON
+            // Générer des objets Machine
             var outputMachines: [Machine] = []
             
             for inventoryRow in matchingInventory {
@@ -543,8 +543,14 @@ struct CSVImportView: View {
                     serialNumber: sourceSerial,
                     platformId: Int(platformId),
                     friendlyName: sourceComputerName,
-                    ownership: ownership
-                    
+                    ownership: ownership,
+                    employeeType: "0",
+                    vpnSelect: "0",
+                    tableau: "0",
+                    filemaker: "0",
+                    mindmanager: "0",
+                    devicetype: "0",
+                    SCIPER: "0"
                 )
                 outputMachines.append(machine)
             }
@@ -910,73 +916,45 @@ struct MachineListView: View {
 struct AddMachineView: View {
     @Environment(\.dismiss) var dismiss
     var onAdd: (Machine) -> Void
-    
+
     @State private var selectedEmployee: String? = nil
+    @State private var selectedDeviceType: String? = nil
     @State private var selectedVPN: String? = nil
-    @State private var selectedSAP: String? = nil
     @State private var selectedFileMaker: String? = nil
     @State private var selectedTableau: [String] = []
-    
-    @State private var dwgTrueViewSelected = false
-    @State private var kesoKEntrySelected = false
-    @State private var inDesignCS4Selected = false
-    @State private var openTextSelected = false
-    @State private var sunetPlusSelected = false
     @State private var mindmanagerSelected = false
-    
+
     @State private var endUserName = ""
+    @State private var SCIPER = ""
     @State private var assetNumber = ""
     @State private var serialNumber = ""
     @State private var friendlyName = ""
-    
+
     let columns = [
         GridItem(.flexible(minimum: 200, maximum: 300)),
         GridItem(.flexible(minimum: 200, maximum: 300)),
         GridItem(.flexible(minimum: 200, maximum: 300))
     ]
-    
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                
-                // Aligner les champs de saisie avec labels
                 VStack(spacing: 10) {
-                    HStack {
-                        Text("Nom d'utilisateur final").frame(width: 180, alignment: .leading)
-                        TextField("Entrez le nom", text: $endUserName)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                    }
-                    HStack {
-                        Text("Numéro d'actif").frame(width: 180, alignment: .leading)
-                        TextField("Entrez le numéro", text: $assetNumber)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                    }
-                    HStack {
-                        Text("Numéro de série").frame(width: 180, alignment: .leading)
-                        TextField("Entrez le numéro", text: $serialNumber)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                    }
-                    HStack {
-                        Text("Nom convivial").frame(width: 180, alignment: .leading)
-                        TextField("Entrez un nom", text: $friendlyName)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                    }
+                    requiredField(label: "Nom d'utilisateur final", text: $endUserName)
+                    requiredField(label: "SCIPER", text: $SCIPER)
+                    requiredField(label: "Numéro d'actif", text: $assetNumber)
+                    requiredField(label: "Numéro de série", text: $serialNumber)
+                    requiredField(label: "Nom convivial", text: $friendlyName)
                 }
                 .padding(.horizontal)
 
-                // Organisation des sélections et toggles
                 LazyVGrid(columns: columns, spacing: 20) {
-                    SectionView(title: "Employee Type", options: ["Personnel", "Hôte", "Hors-EPFL"], selection: $selectedEmployee)
-                    SectionView(title: "VPN Guest", options: ["SSC", "SAP", "AGA"], selection: $selectedVPN)
-                    SectionView(title: "SAP", options: ["Config EPFL", "Config CCSAP"], selection: $selectedSAP)
+                    SectionView(title: "Employee Type", options: ["Personnel", "Hôte", "Hors-EPFL"], selection: $selectedEmployee, isRequired: true)
+                    SectionView(title: "Device Type", options: ["Laptop", "Workstation", "Mobile"], selection: $selectedDeviceType, isRequired: true)
+                    SectionView(title: "VPN Guest", options: ["SSC","AGA"], selection: $selectedVPN)
                     SectionView(title: "FileMaker", options: ["TTO-AJ", "OHSPR-DSE", "Autres"], selection: $selectedFileMaker)
 
-                    Toggle("DWG TrueView", isOn: $dwgTrueViewSelected)
-                    Toggle("Keso K-Entry", isOn: $kesoKEntrySelected)
-                    Toggle("InDesign CS4", isOn: $inDesignCS4Selected)
-                    Toggle("OpenText", isOn: $openTextSelected)
-                    Toggle("SunetPlus", isOn: $sunetPlusSelected)
-                    Toggle("MindManager", isOn: $mindmanagerSelected)
+                    borderedToggle(title: "MindManager", isOn: $mindmanagerSelected)
 
                     MultipleSelectionView(title: "Tableau", options: ["Desktop", "Prep"], selections: $selectedTableau)
                 }
@@ -984,24 +962,17 @@ struct AddMachineView: View {
             }
             .padding()
         }
-        
-        // Boutons centrés
+
         HStack {
             Button("Ajouter") {
-                
                 print("Configuration sélectionnée :")
                 print("Employee Type: \(selectedEmployee ?? "None")")
+                print("Device Type: \(selectedDeviceType ?? "None")")
                 print("VPN Guest: \(selectedVPN ?? "None")")
-                print("SAP: \(selectedSAP ?? "None")")
                 print("FileMaker: \(selectedFileMaker ?? "None")")
                 print("Tableau: \(selectedTableau.joined(separator: ", "))")
-                print("DWG TrueView: \(dwgTrueViewSelected ? "Oui" : "Non")")
-                print("Keso K-Entry: \(kesoKEntrySelected ? "Oui" : "Non")")
-                print("InDesign CS4: \(inDesignCS4Selected ? "Oui" : "Non")")
-                print("OpenText: \(openTextSelected ? "Oui" : "Non")")
-                print("SunetPlus: \(sunetPlusSelected ? "Oui" : "Non")")
                 print("MindManager: \(mindmanagerSelected ? "Oui" : "Non")")
-                
+
                 let config = getAppConfig()
                 let newMachine = Machine(
                     endUserName: endUserName,
@@ -1011,14 +982,21 @@ struct AddMachineView: View {
                     serialNumber: serialNumber,
                     platformId: Int(config?.platformId ?? 0),
                     friendlyName: friendlyName,
-                    ownership: config?.ownership ?? ""
+                    ownership: config?.ownership ?? "",
+                    employeeType: selectedEmployee ?? "",
+                    vpnSelect: selectedVPN ?? "",
+                    tableau: selectedTableau.joined(separator: ", "),
+                    filemaker: selectedFileMaker ?? "",
+                    mindmanager: selectedDeviceType ?? "",
+                    devicetype: mindmanagerSelected ? "1" : "0",
+                    SCIPER: SCIPER
                 )
                 onAdd(newMachine)
                 dismiss()
             }
-            .disabled(endUserName.isEmpty || assetNumber.isEmpty || serialNumber.isEmpty || friendlyName.isEmpty)
+            .disabled(endUserName.isEmpty || selectedDeviceType == nil || assetNumber.isEmpty || serialNumber.isEmpty || friendlyName.isEmpty || selectedEmployee == nil)
             .buttonStyle(.borderedProminent)
-            
+
             Button("Annuler") {
                 dismiss()
             }
@@ -1027,16 +1005,48 @@ struct AddMachineView: View {
         .frame(maxWidth: .infinity)
         .padding()
     }
+
+    /// Fonction pour afficher un champ obligatoire avec une étoile rouge `*`
+    @ViewBuilder
+    private func requiredField(label: String, text: Binding<String>) -> some View {
+        HStack {
+            Text("\(label) ")
+                .frame(width: 180, alignment: .leading)
+                .foregroundColor(.primary)
+            Text("*")
+                .foregroundColor(.red)
+            TextField("Entrez \(label.lowercased())", text: text)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+        }
+    }
+
+    /// Fonction pour créer un Toggle encadré
+    @ViewBuilder
+    private func borderedToggle(title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(title, isOn: isOn)
+            .padding()
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .background(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 1))
+    }
 }
 
+/// Vue pour les sélecteurs avec option obligatoire (affichage d'une étoile `*` si nécessaire)
 struct SectionView: View {
     let title: String
     let options: [String]
     @Binding var selection: String?
-    
+    var isRequired: Bool = false
+
     var body: some View {
         VStack(alignment: .leading) {
-            Text(title).font(.headline)
+            HStack {
+                Text(title)
+                    .font(.headline)
+                if isRequired {
+                    Text("*")
+                        .foregroundColor(.red)
+                }
+            }
             ForEach(options, id: \.self) { option in
                 RadioButton(title: option, selection: $selection)
             }
@@ -1046,11 +1056,12 @@ struct SectionView: View {
     }
 }
 
+/// Vue pour une sélection multiple
 struct MultipleSelectionView: View {
     let title: String
     let options: [String]
     @Binding var selections: [String]
-    
+
     var body: some View {
         VStack(alignment: .leading) {
             Text(title).font(.headline)
@@ -1072,12 +1083,19 @@ struct MultipleSelectionView: View {
     }
 }
 
+/// Vue pour les boutons radio
 struct RadioButton: View {
     let title: String
     @Binding var selection: String?
-    
+
     var body: some View {
-        Button(action: { selection = title }) {
+        Button(action: {
+            if selection == title {
+                selection = nil  // Désélectionner si déjà sélectionné
+            } else {
+                selection = title
+            }
+        }) {
             HStack {
                 Image(systemName: selection == title ? "largecircle.fill.circle" : "circle")
                 Text(title)
@@ -1086,7 +1104,6 @@ struct RadioButton: View {
         .buttonStyle(.plain)
     }
 }
-
 
 // MARK: - Configuration Vue
 struct ConfigurationView: View {
