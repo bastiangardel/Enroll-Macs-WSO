@@ -569,6 +569,7 @@ struct MachineListView: View {
     
     @State private var statusMessage: String = ""
     @State private var showAddMachineView = false
+    @State private var showDetailsMachine = false // État pour afficher les détails de la machine selectionnée
     @State private var selectedMachines: Set<UUID> = [] // Set to track selected machines for deletion
     @State private var isEditing: Bool = false
     @State private var isAuthenticated = false // Désormais, utilisé uniquement pour l'authentification lors de l'envoi
@@ -730,6 +731,13 @@ struct MachineListView: View {
                     }
                 }
                 
+                Button("Détails Machine") {
+                    showDetailsMachine = true
+                }
+                .disabled(selectedMachines.isEmpty)
+                .disabled(selectedMachines.count > 1)
+                .disabled(isProcessing)
+                
                 Button("Supprimer sélectionnées") {
                     deleteSelectedMachines()
                 }
@@ -771,6 +779,21 @@ struct MachineListView: View {
                 showStatusMessage("Machine ajoutée avec succès !")
                 sortMachines(by: sortKey)
             }
+        }
+        .sheet(isPresented: $showDetailsMachine) {
+            DetailsMachineView(
+                endUserName: machines.first { $0.id == selectedMachines.first! }?.endUserName ?? "",
+                SCIPER: machines.first { $0.id == selectedMachines.first! }?.SCIPER ?? "",
+                assetNumber: machines.first { $0.id == selectedMachines.first! }?.assetNumber ?? "",
+                serialNumber: machines.first { $0.id == selectedMachines.first! }?.serialNumber ?? "",
+                friendlyName: machines.first { $0.id == selectedMachines.first! }?.friendlyName ?? "",
+                selectedEmployee: machines.first { $0.id == selectedMachines.first! }?.employeeType ?? "",
+                selectedDeviceType: machines.first { $0.id == selectedMachines.first! }?.devicetype ?? "",
+                selectedVPN: machines.first { $0.id == selectedMachines.first! }?.vpnSelect ?? "",
+                selectedFileMaker: machines.first { $0.id == selectedMachines.first! }?.filemaker ?? "",
+                selectedTableau: machines.first { $0.id == selectedMachines.first! }?.tableau ?? [""],
+                mindmanagerSelected: machines.first { $0.id == selectedMachines.first! }?.mindmanager ?? ""
+            )
         }
     }
     
@@ -912,6 +935,101 @@ struct MachineListView: View {
     
 }
 
+// MARK: - Details machine Sheet
+
+struct DetailsMachineView: View {
+    var endUserName: String
+    var SCIPER: String
+    var assetNumber: String
+    var serialNumber: String
+    var friendlyName: String
+    var selectedEmployee: String = ""
+    var selectedDeviceType: String = ""
+    var selectedVPN: String = ""
+    var selectedFileMaker: String = ""
+    var selectedTableau: [String]
+    var mindmanagerSelected: String
+
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Détails de la machine")
+                .font(.title)
+                .bold()
+                .padding(.top, 10)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 15) {
+                    
+                    InfoSectionView(title: "Informations Générales", content: [
+                        ("Nom d'utilisateur", endUserName),
+                        ("SCIPER", SCIPER),
+                        ("Numéro d'actif", assetNumber),
+                        ("Numéro de série", serialNumber),
+                        ("Nom convivial", friendlyName)
+                    ])
+                    
+                    InfoSectionView(title: "Sélections", content: [
+                        ("Type d'employé", selectedEmployee),
+                        ("Type d'appareil", selectedDeviceType),
+                        ("VPN Guest", selectedVPN == "" ? "Aucune sélection" : selectedVPN),
+                        ("FileMaker", selectedFileMaker == "" ? "Aucune sélection" : selectedFileMaker),
+                        ("Tableau", selectedTableau.isEmpty ? "Aucune sélection" : selectedTableau.joined(separator: ", ")),
+                        ("MindManager", mindmanagerSelected == "1" ? "Oui" : "Non")
+                    ])
+                }
+                .padding()
+            }
+            
+            // Bouton de fermeture
+            HStack {
+                Spacer()
+                Button("Fermer") {
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+                Spacer()
+            }
+            .padding(.bottom, 10)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.gray.opacity(0.05)) // Fond gris clair pour plus de lisibilité
+    }
+}
+
+struct InfoSectionView: View {
+    var title: String
+    var content: [(String, String)]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.blue)
+                .padding(.bottom, 5)
+
+            ForEach(content, id: \.0) { label, value in
+                HStack {
+                    Text("\(label) :")
+                        .bold()
+                        .frame(width: 150, alignment: .leading)
+                    Text(value)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(8)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
+            }
+        }
+        .padding()
+        .background(Color.gray.opacity(0.2)) // Fond de section plus visible
+        .cornerRadius(10)
+    }
+}
+
 // MARK: - Vue pour ajouter une machine
 struct AddMachineView: View {
     @Environment(\.dismiss) var dismiss
@@ -965,14 +1083,6 @@ struct AddMachineView: View {
 
         HStack {
             Button("Ajouter") {
-                print("Configuration sélectionnée :")
-                print("Employee Type: \(selectedEmployee ?? "None")")
-                print("Device Type: \(selectedDeviceType ?? "None")")
-                print("VPN Guest: \(selectedVPN ?? "None")")
-                print("FileMaker: \(selectedFileMaker ?? "None")")
-                print("Tableau: \(selectedTableau.joined(separator: ", "))")
-                print("MindManager: \(mindmanagerSelected ? "Oui" : "Non")")
-
                 let config = getAppConfig()
                 let newMachine = Machine(
                     endUserName: endUserName,
@@ -987,8 +1097,8 @@ struct AddMachineView: View {
                     vpnSelect: selectedVPN ?? "",
                     tableau: selectedTableau,
                     filemaker: selectedFileMaker ?? "",
-                    mindmanager: selectedDeviceType ?? "",
-                    devicetype: mindmanagerSelected ? "1" : "0",
+                    mindmanager: mindmanagerSelected ? "1" : "0",
+                    devicetype: selectedDeviceType ?? "",
                     SCIPER: SCIPER
                 )
                 onAdd(newMachine)
