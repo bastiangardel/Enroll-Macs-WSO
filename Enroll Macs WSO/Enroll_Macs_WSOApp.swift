@@ -143,7 +143,7 @@ func getAppConfig() -> AppConfig? {
 func saveFileToSamba(filename: String, content: Data, completion: @escaping (Bool, String) -> Void) {
     if testmode { // Utilisation du flag global
            // Stockage en local
-           let localPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("TestStorage")
+           let localPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads/TestStorage")
            let fileURL = localPath.appendingPathComponent(filename)
 
            do {
