@@ -52,7 +52,7 @@ struct Machine: Identifiable, Encodable {
     var ownership: String
     var employeeType: String
     var vpnSelect: String
-    var tableau: String
+    var tableau: [String]
     var filemaker: String
     var mindmanager: String
     var devicetype: String
@@ -546,7 +546,7 @@ struct CSVImportView: View {
                     ownership: ownership,
                     employeeType: "0",
                     vpnSelect: "0",
-                    tableau: "0",
+                    tableau: [],
                     filemaker: "0",
                     mindmanager: "0",
                     devicetype: "0",
@@ -985,7 +985,7 @@ struct AddMachineView: View {
                     ownership: config?.ownership ?? "",
                     employeeType: selectedEmployee ?? "",
                     vpnSelect: selectedVPN ?? "",
-                    tableau: selectedTableau.joined(separator: ", "),
+                    tableau: selectedTableau,
                     filemaker: selectedFileMaker ?? "",
                     mindmanager: selectedDeviceType ?? "",
                     devicetype: mindmanagerSelected ? "1" : "0",
