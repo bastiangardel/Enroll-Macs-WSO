@@ -1015,7 +1015,7 @@ struct AddMachineView: View {
                 .foregroundColor(.primary)
             Text("*")
                 .foregroundColor(.red)
-            TextField("Entrez \(label.lowercased())", text: text)
+            TextField("Entrez le \(label.lowercased())", text: text)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
         }
     }
