@@ -563,13 +563,13 @@ struct CSVImportView: View {
                     platformId: Int(platformId),
                     friendlyName: sourceComputerName,
                     ownership: ownership,
-                    employeeType: "0",
-                    vpnSelect: "0",
+                    employeeType: "",
+                    vpnSelect: "",
                     tableau: [],
-                    filemaker: "0",
-                    mindmanager: "0",
-                    devicetype: "0",
-                    SCIPER: "0"
+                    filemaker: "",
+                    mindmanager: "",
+                    devicetype: "",
+                    SCIPER: ""
                 )
                 outputMachines.append(machine)
             }
