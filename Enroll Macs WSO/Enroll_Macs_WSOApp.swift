@@ -15,6 +15,9 @@ import UniformTypeIdentifiers
 import AppKit
 import Cocoa
 
+
+let testmode = true
+
 // MARK: - Outils
 func normalizeKeys(_ dictionary: [String: String]) -> [String: String] {
     var normalized = [String: String]()
@@ -138,47 +141,63 @@ func getAppConfig() -> AppConfig? {
 
 // MARK: - Samba Storage Helper
 func saveFileToSamba(filename: String, content: Data, completion: @escaping (Bool, String) -> Void) {
-    guard let config = getAppConfig(),
-          let sambaUsername = keychain[KeychainKeys.sambaUsername.rawValue],
-          let sambaPassword = keychain[KeychainKeys.sambaPassword.rawValue],
-          let sambaPath = config.sambaPath else {
-        completion(false, "Configuration manquante")
-        return
-    }
-    
-    guard let url = URL(string: sambaPath), let host = url.host else {
-        completion(false, "Chemin SMB invalide")
-        return
-    }
-    
-    let client = SMBClient(host: host)
-    
-    
-    Task {
-        do {
-            
-            // Se connecter au serveur SMB
-            try await client.login(username: sambaUsername, password: sambaPassword)
-            
-            // Connexion au partage
-            let shareName = url.pathComponents.count > 1 ? url.pathComponents[1] : ""
-            guard !shareName.isEmpty else {
-                completion(false, "Nom de partage manquant dans l'URL SMB")
-                return
-            }
-            
-            try await client.connectShare(String(shareName))
-            
-            let remoteFilePath = url.path.dropFirst(shareName.count + 1) // Chemin relatif
-            try await client.upload(content: content, path: remoteFilePath.appending("/\(filename)"))
-            try await client.disconnectShare()
-            
-            completion(true, "Fichier enregistré avec succès sur \(sambaPath)")
-            
-        } catch {
-            completion(false, "Erreur lors de l'envoi du fichier : \(error.localizedDescription)")
-        }
-    }
+    if testmode { // Utilisation du flag global
+           // Stockage en local
+           let localPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("TestStorage")
+           let fileURL = localPath.appendingPathComponent(filename)
+
+           do {
+               // Créer le dossier s'il n'existe pas
+               try FileManager.default.createDirectory(at: localPath, withIntermediateDirectories: true, attributes: nil)
+               
+               // Écrire le fichier
+               try content.write(to: fileURL)
+               completion(true, "Fichier enregistré localement dans \(fileURL.path)")
+           } catch {
+               completion(false, "Erreur lors de l'enregistrement local : \(error.localizedDescription)")
+           }
+       } else {
+           // Stockage sur le partage Samba
+           guard let config = getAppConfig(),
+                 let sambaUsername = keychain[KeychainKeys.sambaUsername.rawValue],
+                 let sambaPassword = keychain[KeychainKeys.sambaPassword.rawValue],
+                 let sambaPath = config.sambaPath else {
+               completion(false, "Configuration manquante")
+               return
+           }
+           
+           guard let url = URL(string: sambaPath), let host = url.host else {
+               completion(false, "Chemin SMB invalide")
+               return
+           }
+           
+           let client = SMBClient(host: host)
+
+           Task {
+               do {
+                   // Se connecter au serveur SMB
+                   try await client.login(username: sambaUsername, password: sambaPassword)
+                   
+                   // Connexion au partage
+                   let shareName = url.pathComponents.count > 1 ? url.pathComponents[1] : ""
+                   guard !shareName.isEmpty else {
+                       completion(false, "Nom de partage manquant dans l'URL SMB")
+                       return
+                   }
+                   
+                   try await client.connectShare(shareName)
+                   
+                   let remoteFilePath = url.path.dropFirst(shareName.count + 1) // Chemin relatif
+                   try await client.upload(content: content, path: remoteFilePath.appending("/\(filename)"))
+                   try await client.disconnectShare()
+                   
+                   completion(true, "Fichier enregistré avec succès sur \(sambaPath)")
+                   
+               } catch {
+                   completion(false, "Erreur lors de l'envoi du fichier : \(error.localizedDescription)")
+               }
+           }
+       }
 }
 
 // MARK: - Vue selection chemin de sauvegarde
