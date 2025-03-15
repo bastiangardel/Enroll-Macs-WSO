@@ -16,7 +16,7 @@ import AppKit
 import Cocoa
 
 
-let testmode = true
+let testmode = true //Flag activant le mode test
 
 // MARK: - Outils
 func normalizeKeys(_ dictionary: [String: String]) -> [String: String] {
