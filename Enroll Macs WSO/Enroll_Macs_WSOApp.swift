@@ -693,7 +693,19 @@ struct MachineListView: View {
                     }
                     .padding(.vertical, 5)
                     .background(selectedMachines.contains(machine.id) ? Color.blue.opacity(0.2) : Color.clear) // Highlight selected machines
-                    .onTapGesture {
+                    .contentShape(Rectangle())
+                    .simultaneousGesture(
+                        TapGesture(count: 2).onEnded {
+                            if !selectedMachines.contains(machine.id) {
+                                selectedMachines.insert(machine.id)
+                            }
+                            
+                            if selectedMachines.count == 1 {
+                                showDetailsMachine = true
+                            }
+                        }
+                    )
+                    .onTapGesture() {
                         if selectedMachines.contains(machine.id) {
                             selectedMachines.remove(machine.id)
                         } else {
