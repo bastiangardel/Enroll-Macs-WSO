@@ -696,13 +696,19 @@ struct MachineListView: View {
                     .contentShape(Rectangle())
                     .simultaneousGesture(
                         TapGesture(count: 2).onEnded {
-                            if !selectedMachines.contains(machine.id) {
+                            if selectedMachines.isEmpty {
                                 selectedMachines.insert(machine.id)
                             }
-                            
-                            if selectedMachines.count == 1 {
-                                showDetailsMachine = true
+                            else if selectedMachines.contains(machine.id){
+                                selectedMachines.filter { $0 != machine.id }.forEach { selectedMachines.remove($0) }
                             }
+                            else
+                            {
+                                selectedMachines.insert(machine.id)
+                                selectedMachines.filter { $0 != machine.id }.forEach { selectedMachines.remove($0) }
+                            }
+                            
+                            showDetailsMachine = true
                         }
                     )
                     .onTapGesture() {
@@ -719,6 +725,7 @@ struct MachineListView: View {
                 }
             }
             .listStyle(DefaultListStyle()) // Style pour macOS
+            
             
             // Messages d'état
             Text(statusMessage)
@@ -961,9 +968,9 @@ struct DetailsMachineView: View {
     var selectedFileMaker: String = ""
     var selectedTableau: [String]
     var mindmanagerSelected: String
-
+    
     @Environment(\.dismiss) var dismiss
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Détails de la machine")
@@ -971,7 +978,7 @@ struct DetailsMachineView: View {
                 .bold()
                 .padding(.top, 10)
                 .frame(maxWidth: .infinity, alignment: .center)
-
+            
             ScrollView {
                 VStack(alignment: .leading, spacing: 15) {
                     
@@ -1015,14 +1022,14 @@ struct DetailsMachineView: View {
 struct InfoSectionView: View {
     var title: String
     var content: [(String, String)]
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.headline)
                 .foregroundColor(.blue)
                 .padding(.bottom, 5)
-
+            
             ForEach(content, id: \.0) { label, value in
                 HStack {
                     Text("\(label) :")
@@ -1046,26 +1053,26 @@ struct InfoSectionView: View {
 struct AddMachineView: View {
     @Environment(\.dismiss) var dismiss
     var onAdd: (Machine) -> Void
-
+    
     @State private var selectedEmployee: String? = nil
     @State private var selectedDeviceType: String? = nil
     @State private var selectedVPN: String? = nil
     @State private var selectedFileMaker: String? = nil
     @State private var selectedTableau: [String] = []
     @State private var mindmanagerSelected = false
-
+    
     @State private var endUserName = ""
     @State private var SCIPER = ""
     @State private var assetNumber = ""
     @State private var serialNumber = ""
     @State private var friendlyName = ""
-
+    
     let columns = [
         GridItem(.flexible(minimum: 200, maximum: 300)),
         GridItem(.flexible(minimum: 200, maximum: 300)),
         GridItem(.flexible(minimum: 200, maximum: 300))
     ]
-
+    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -1077,22 +1084,22 @@ struct AddMachineView: View {
                     requiredField(label: "Nom convivial", text: $friendlyName)
                 }
                 .padding(.horizontal)
-
+                
                 LazyVGrid(columns: columns, spacing: 20) {
                     SectionView(title: "Employee Type", options: ["Personnel", "Hôte", "Hors-EPFL"], selection: $selectedEmployee, isRequired: true)
                     SectionView(title: "Device Type", options: ["Laptop", "Workstation", "Mobile"], selection: $selectedDeviceType, isRequired: true)
                     SectionView(title: "VPN Guest", options: ["SSC","AGA"], selection: $selectedVPN)
                     SectionView(title: "FileMaker", options: ["TTO-AJ", "OHSPR-DSE", "Autres"], selection: $selectedFileMaker)
-
+                    
                     borderedToggle(title: "MindManager", isOn: $mindmanagerSelected)
-
+                    
                     MultipleSelectionView(title: "Tableau", options: ["Desktop", "Prep"], selections: $selectedTableau)
                 }
                 .padding(.horizontal)
             }
             .padding()
         }
-
+        
         HStack {
             Button("Ajouter") {
                 let config = getAppConfig()
@@ -1118,7 +1125,7 @@ struct AddMachineView: View {
             }
             .disabled(endUserName.isEmpty || selectedDeviceType == nil || assetNumber.isEmpty || serialNumber.isEmpty || friendlyName.isEmpty || selectedEmployee == nil)
             .buttonStyle(.borderedProminent)
-
+            
             Button("Annuler") {
                 dismiss()
             }
@@ -1127,7 +1134,7 @@ struct AddMachineView: View {
         .frame(maxWidth: .infinity)
         .padding()
     }
-
+    
     /// Fonction pour afficher un champ obligatoire avec une étoile rouge `*`
     @ViewBuilder
     private func requiredField(label: String, text: Binding<String>) -> some View {
@@ -1141,7 +1148,7 @@ struct AddMachineView: View {
                 .textFieldStyle(RoundedBorderTextFieldStyle())
         }
     }
-
+    
     /// Fonction pour créer un Toggle encadré
     @ViewBuilder
     private func borderedToggle(title: String, isOn: Binding<Bool>) -> some View {
@@ -1158,7 +1165,7 @@ struct SectionView: View {
     let options: [String]
     @Binding var selection: String?
     var isRequired: Bool = false
-
+    
     var body: some View {
         VStack(alignment: .leading) {
             HStack {
@@ -1183,7 +1190,7 @@ struct MultipleSelectionView: View {
     let title: String
     let options: [String]
     @Binding var selections: [String]
-
+    
     var body: some View {
         VStack(alignment: .leading) {
             Text(title).font(.headline)
@@ -1209,7 +1216,7 @@ struct MultipleSelectionView: View {
 struct RadioButton: View {
     let title: String
     @Binding var selection: String?
-
+    
     var body: some View {
         Button(action: {
             if selection == title {
