@@ -910,6 +910,8 @@ struct MachineListView: View {
             return
         }
         
+        selectedMachines.removeAll()
+        
         isProcessing = true
         progress = 0.0
         let totalMachines = machines.count
