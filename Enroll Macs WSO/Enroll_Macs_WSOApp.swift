@@ -597,7 +597,15 @@ struct MachineListView: View {
     @State private var sortOrder: SortOrder = .ascending
     @State private var sortKey: String = "friendlyName"
     
+    @State private var isTestMode: Bool = ConfigManager.shared.isTestMode
+    
     var body: some View {
+        Text("")
+            .navigationTitle(ConfigManager.shared.isTestMode ? "TEST - Affectation des machines dans WSO" : "Affectation des machines dans WSO")
+            .onAppear {
+                isTestMode = ConfigManager.shared.isTestMode
+                print(isTestMode)
+            }
         VStack {
             if isProcessing {
                 VStack {
@@ -831,6 +839,7 @@ struct MachineListView: View {
             )
         }
     }
+    
     
     // Fonction de tri
     func sortMachines(by key: String) {
@@ -1373,8 +1382,6 @@ struct ConfigurationView: View {
         )
         keychain[KeychainKeys.sambaUsername.rawValue] = sUsername
         keychain[KeychainKeys.sambaPassword.rawValue] = sPassword
-        
-        //clearField()
         
         isConfigured = true
     }
