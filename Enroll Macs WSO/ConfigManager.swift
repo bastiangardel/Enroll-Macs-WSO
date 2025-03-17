@@ -24,7 +24,7 @@ class ConfigManager {
     private init() {
         // Si la clé n'existe pas, on initialise à `false`
         if UserDefaults.standard.object(forKey: testKey) == nil {
-            isTestMode = true
+            isTestMode = false
         }
     }
 }
