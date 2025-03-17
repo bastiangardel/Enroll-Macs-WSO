@@ -15,9 +15,6 @@ import UniformTypeIdentifiers
 import AppKit
 import Cocoa
 
-
-let testmode = true //Flag activant le mode test
-
 // MARK: - Outils
 func normalizeKeys(_ dictionary: [String: String]) -> [String: String] {
     var normalized = [String: String]()
@@ -141,7 +138,7 @@ func getAppConfig() -> AppConfig? {
 
 // MARK: - Samba Storage Helper
 func saveFileToSamba(filename: String, content: Data, completion: @escaping (Bool, String) -> Void) {
-    if testmode { // Utilisation du flag global
+    if ConfigManager.shared.isTestMode { // Testmode flag stored in configfile
            // Stockage en local
            let localPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads/TestStorage")
            let fileURL = localPath.appendingPathComponent(filename)
