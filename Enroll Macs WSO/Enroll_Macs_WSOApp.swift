@@ -39,8 +39,28 @@ enum SortOrder {
     case ascending, descending
 }
 
+@propertyWrapper
+struct BoolAsInt: Codable {
+    var wrappedValue: Bool
+    
+    init(wrappedValue: Bool) {
+        self.wrappedValue = wrappedValue
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(wrappedValue ? 1 : 0)
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let intValue = try container.decode(Int.self)
+        self.wrappedValue = intValue != 0
+    }
+}
+
 // MARK: - Modèles JSON
-struct Machine: Identifiable, Encodable {
+struct Machine: Identifiable, Codable {
     let id = UUID()
     var endUserName: String
     var assetNumber: String
@@ -52,13 +72,13 @@ struct Machine: Identifiable, Encodable {
     var ownership: String
     var employeeType: String
     var vpnSelect: String
-    var tableau: [String]
+    @BoolAsInt var tableauDesktop: Bool
+    @BoolAsInt var tableauPrep: Bool
     var filemaker: String
-    var mindmanager: String
+    @BoolAsInt var mindmanager: Bool
     var devicetype: String
     var SCIPER: String
     
-    // Définir des clés personnalisées pour l'encodage
     enum CodingKeys: String, CodingKey {
         case endUserName = "EndUserName"
         case assetNumber = "AssetNumber"
@@ -68,9 +88,10 @@ struct Machine: Identifiable, Encodable {
         case platformId = "PlatformId"
         case friendlyName = "FriendlyName"
         case ownership = "Ownership"
-        case employeeType = "employeetype"
+        case employeeType = "employeetypemac"
         case vpnSelect = "vpnguestmac"
-        case tableau = "tableaumac"
+        case tableauDesktop = "tableauDesktopmac"
+        case tableauPrep = "tableauPrepmac"
         case filemaker = "filemakermac"
         case mindmanager = "mindmanagermac"
         case devicetype = "devicetype"
@@ -78,7 +99,9 @@ struct Machine: Identifiable, Encodable {
     }
     
     func toJSON() -> Data? {
-        try? JSONEncoder().encode(self)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted // Optionnel pour un JSON lisible
+        return try? encoder.encode(self)
     }
 }
 
@@ -562,9 +585,10 @@ struct CSVImportView: View {
                     ownership: ownership,
                     employeeType: "",
                     vpnSelect: "",
-                    tableau: [],
+                    tableauDesktop: false,
+                    tableauPrep: false,
                     filemaker: "",
-                    mindmanager: "",
+                    mindmanager: false,
                     devicetype: "",
                     SCIPER: ""
                 )
@@ -834,8 +858,9 @@ struct MachineListView: View {
                 selectedDeviceType: machines.first { $0.id == selectedMachines.first! }?.devicetype ?? "",
                 selectedVPN: machines.first { $0.id == selectedMachines.first! }?.vpnSelect ?? "",
                 selectedFileMaker: machines.first { $0.id == selectedMachines.first! }?.filemaker ?? "",
-                selectedTableau: machines.first { $0.id == selectedMachines.first! }?.tableau ?? [""],
-                mindmanagerSelected: machines.first { $0.id == selectedMachines.first! }?.mindmanager ?? ""
+                selectedTableauDesktop: machines.first { $0.id == selectedMachines.first! }?.tableauDesktop ?? false,
+                selectedTableauPrep: machines.first { $0.id == selectedMachines.first! }?.tableauPrep ?? false,
+                mindmanagerSelected: machines.first { $0.id == selectedMachines.first! }?.mindmanager ?? false
             )
         }
     }
@@ -993,8 +1018,9 @@ struct DetailsMachineView: View {
     var selectedDeviceType: String = ""
     var selectedVPN: String = ""
     var selectedFileMaker: String = ""
-    var selectedTableau: [String]
-    var mindmanagerSelected: String
+    var selectedTableauDesktop: Bool
+    var selectedTableauPrep: Bool
+    var mindmanagerSelected: Bool
     
     @Environment(\.dismiss) var dismiss
     
@@ -1022,8 +1048,9 @@ struct DetailsMachineView: View {
                         ("Type d'appareil", selectedDeviceType),
                         ("VPN Guest", selectedVPN == "" ? "Aucune sélection" : selectedVPN),
                         ("FileMaker", selectedFileMaker == "" ? "Aucune sélection" : selectedFileMaker),
-                        ("Tableau", selectedTableau.isEmpty ? "Aucune sélection" : selectedTableau.joined(separator: ", ")),
-                        ("MindManager", mindmanagerSelected == "1" ? "Oui" : "Non")
+                        ("TableauDesktop", selectedTableauDesktop ? "Oui" : "Non"),
+                        ("TableauPrep", selectedTableauPrep ? "Oui" : "Non"),
+                        ("MindManager", mindmanagerSelected ? "Oui" : "Non")
                     ])
                 }
                 .padding()
@@ -1141,9 +1168,10 @@ struct AddMachineView: View {
                     ownership: config?.ownership ?? "",
                     employeeType: selectedEmployee ?? "",
                     vpnSelect: selectedVPN ?? "",
-                    tableau: selectedTableau,
+                    tableauDesktop: selectedTableau.contains("Desktop"),
+                    tableauPrep: selectedTableau.contains("Prep"),
                     filemaker: selectedFileMaker ?? "",
-                    mindmanager: mindmanagerSelected ? "1" : "0",
+                    mindmanager: mindmanagerSelected,
                     devicetype: selectedDeviceType ?? "",
                     SCIPER: SCIPER
                 )
