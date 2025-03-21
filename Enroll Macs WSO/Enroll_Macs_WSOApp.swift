@@ -1115,6 +1115,8 @@ struct AddMachineView: View {
     @State private var selectedTableau: [String] = []
     @State private var mindmanagerSelected = false
     
+    @State private var locationGroupIdDyn = ""
+    
     @State private var endUserName = ""
     @State private var SCIPER = ""
     @State private var assetNumber = ""
@@ -1157,10 +1159,25 @@ struct AddMachineView: View {
         HStack {
             Button("Ajouter") {
                 let config = getAppConfig()
+                switch selectedDeviceType {
+                    case "Laptop":
+                     locationGroupIdDyn = "628"
+                    break
+                case "Workstation":
+                     locationGroupIdDyn = "629"
+                    break
+                case "Mobile":
+                     locationGroupIdDyn = "627"
+                    break
+                default:
+                     locationGroupIdDyn = "628"
+                    break
+                }
+                
                 let newMachine = Machine(
                     endUserName: endUserName,
                     assetNumber: assetNumber,
-                    locationGroupId: config?.locationGroupId ?? "",
+                    locationGroupId: locationGroupIdDyn,
                     messageType: Int(config?.messageType ?? 0),
                     serialNumber: serialNumber,
                     platformId: Int(config?.platformId ?? 0),
