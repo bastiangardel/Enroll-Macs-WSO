@@ -604,7 +604,7 @@ struct CSVImportView: View {
 
 // MARK: - Vue principale
 struct MachineListView: View {
-    @AppStorage("isConfigured") private var isConfigured: Bool = true
+    @AppStorage("isConfigured") private var isConfigured: Bool = false
     @State private var machines: [Machine] = []
     
     @State private var statusMessage: String = ""
