@@ -76,6 +76,8 @@ struct Machine: Identifiable, Codable {
     @BoolAsInt var tableauPrep: Bool
     var filemaker: String
     @BoolAsInt var mindmanager: Bool
+    @BoolAsInt var linaException: Bool
+    @BoolAsInt var acrobatReaderException: Bool
     var devicetype: String
     var SCIPER: String
     
@@ -94,6 +96,8 @@ struct Machine: Identifiable, Codable {
         case tableauPrep = "tableauPrepmacssc"
         case filemaker = "filemakermacssc"
         case mindmanager = "mindmanagermacssc"
+        case linaException = "linaexceptionssc"
+        case acrobatReaderException = "acrobatreaderexceptionssc"
         case devicetype = "devicetypemacssc"
         case SCIPER = "SCIPER"
     }
@@ -589,6 +593,8 @@ struct CSVImportView: View {
                     tableauPrep: false,
                     filemaker: "",
                     mindmanager: false,
+                    linaException: false,
+                    acrobatReaderException: false,
                     devicetype: "",
                     SCIPER: ""
                 )
@@ -860,7 +866,9 @@ struct MachineListView: View {
                 selectedFileMaker: machines.first { $0.id == selectedMachines.first! }?.filemaker ?? "",
                 selectedTableauDesktop: machines.first { $0.id == selectedMachines.first! }?.tableauDesktop ?? false,
                 selectedTableauPrep: machines.first { $0.id == selectedMachines.first! }?.tableauPrep ?? false,
-                mindmanagerSelected: machines.first { $0.id == selectedMachines.first! }?.mindmanager ?? false
+                mindmanagerSelected: machines.first { $0.id == selectedMachines.first! }?.mindmanager ?? false,
+                linaExceptionSelected: machines.first { $0.id == selectedMachines.first! }?.linaException ?? false,
+                acrobatreaderExceptionSelected: machines.first { $0.id == selectedMachines.first! }?.acrobatReaderException ?? false
             )
         }
     }
@@ -1021,6 +1029,8 @@ struct DetailsMachineView: View {
     var selectedTableauDesktop: Bool
     var selectedTableauPrep: Bool
     var mindmanagerSelected: Bool
+    var linaExceptionSelected: Bool
+    var acrobatreaderExceptionSelected: Bool
     
     @Environment(\.dismiss) var dismiss
     
@@ -1050,7 +1060,9 @@ struct DetailsMachineView: View {
                         ("FileMaker", selectedFileMaker == "" ? "Aucune sélection" : selectedFileMaker),
                         ("TableauDesktop", selectedTableauDesktop ? "Oui" : "Non"),
                         ("TableauPrep", selectedTableauPrep ? "Oui" : "Non"),
-                        ("MindManager", mindmanagerSelected ? "Oui" : "Non")
+                        ("MindManager", mindmanagerSelected ? "Oui" : "Non"),
+                        ("Lina", linaExceptionSelected ? "Non" : "Oui"),
+                        ("Exception Acrobat Pro", acrobatreaderExceptionSelected ? "Oui" : "Non")
                     ])
                 }
                 .padding()
@@ -1114,6 +1126,8 @@ struct AddMachineView: View {
     @State private var selectedFileMaker: String? = nil
     @State private var selectedTableau: [String] = []
     @State private var mindmanagerSelected = false
+    @State private var linaExceptionSelected = false
+    @State private var acrobatReaderExceptionSelected = false
     
     @State private var locationGroupIdDyn = ""
     
@@ -1122,6 +1136,8 @@ struct AddMachineView: View {
     @State private var assetNumber = ""
     @State private var serialNumber = ""
     @State private var friendlyName = ""
+    
+    
     
     let columns = [
         GridItem(.flexible(minimum: 200, maximum: 300)),
@@ -1147,9 +1163,13 @@ struct AddMachineView: View {
                     SectionView(title: "VPN Guest", options: ["SSC","AGA"], selection: $selectedVPN)
                     SectionView(title: "FileMaker", options: ["TTO-AJ", "OHSPR-DSE", "Autres"], selection: $selectedFileMaker)
                     
-                    borderedToggle(title: "MindManager", isOn: $mindmanagerSelected)
-                    
                     MultipleSelectionView(title: "Tableau", options: ["Desktop", "Prep"], selections: $selectedTableau)
+                    
+                    borderedToggle(title: "MindManager", isOn: $mindmanagerSelected)
+                    borderedToggle(title: "Pas de Lina", isOn: $linaExceptionSelected)
+                    Spacer()
+                        .frame(width: 50, height: 50)
+                    borderedToggle(title: "Exception Acrobat Pro", isOn: $acrobatReaderExceptionSelected, isDisabled: selectedEmployee == "Personnel")
                 }
                 .padding(.horizontal)
             }
@@ -1189,6 +1209,8 @@ struct AddMachineView: View {
                     tableauPrep: selectedTableau.contains("Prep"),
                     filemaker: selectedFileMaker ?? "",
                     mindmanager: mindmanagerSelected,
+                    linaException: linaExceptionSelected,
+                    acrobatReaderException: acrobatReaderExceptionSelected,
                     devicetype: selectedDeviceType ?? "",
                     SCIPER: SCIPER
                 )
@@ -1223,11 +1245,13 @@ struct AddMachineView: View {
     
     /// Fonction pour créer un Toggle encadré
     @ViewBuilder
-    private func borderedToggle(title: String, isOn: Binding<Bool>) -> some View {
+    private func borderedToggle(title: String, isOn: Binding<Bool>, isDisabled: Bool = false) -> some View {
         Toggle(title, isOn: isOn)
             .padding()
             .frame(maxWidth: .infinity, minHeight: 50)
             .background(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 1))
+            .disabled(isDisabled) // Désactive le Toggle si isDisabled est true
+            .opacity(isDisabled ? 0.5 : 1.0) // Change l'opacité pour indiquer la désactivation
     }
 }
 
