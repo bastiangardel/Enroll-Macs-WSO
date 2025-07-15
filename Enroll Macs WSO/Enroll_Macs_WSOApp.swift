@@ -1149,11 +1149,11 @@ struct AddMachineView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(spacing: 10) {
-                    requiredField(label: "Nom d'utilisateur final", text: $endUserName)
+                    requiredField(label: "Username", text: $endUserName)
                     requiredField(label: "SCIPER", text: $SCIPER)
-                    requiredField(label: "Numéro d'actif", text: $assetNumber)
+                    requiredField(label: "Numéro d'inventaire", text: $assetNumber)
                     requiredField(label: "Numéro de série", text: $serialNumber)
-                    requiredField(label: "Nom convivial", text: $friendlyName)
+                    requiredField(label: "Nom de la machine", text: $friendlyName)
                 }
                 .padding(.horizontal)
                 
