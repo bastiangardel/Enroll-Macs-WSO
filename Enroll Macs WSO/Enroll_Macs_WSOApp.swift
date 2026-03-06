@@ -1135,9 +1135,9 @@ struct AddMachineView: View {
     @State private var SCIPER = ""
     @State private var assetNumber = ""
     @State private var serialNumber = ""
-    @State private var friendlyName = ""
     
-    
+    // ✅ friendlyName auto-généré à partir de assetNumber
+    private var friendlyName: String { "SCX-\(assetNumber)" }
     
     let columns = [
         GridItem(.flexible(minimum: 200, maximum: 300)),
@@ -1153,7 +1153,7 @@ struct AddMachineView: View {
                     requiredField(label: "SCIPER", text: $SCIPER)
                     requiredField(label: "Numéro d'inventaire", text: $assetNumber)
                     requiredField(label: "Numéro de série", text: $serialNumber)
-                    requiredField(label: "Nom de la machine", text: $friendlyName)
+                    // ✅ Champ "Nom de la machine" supprimé
                 }
                 .padding(.horizontal)
                 
@@ -1180,18 +1180,14 @@ struct AddMachineView: View {
             Button("Ajouter") {
                 let config = getAppConfig()
                 switch selectedDeviceType {
-                    case "Laptop":
-                     locationGroupIdDyn = "628"
-                    break
+                case "Laptop":
+                    locationGroupIdDyn = "628"
                 case "Workstation":
-                     locationGroupIdDyn = "629"
-                    break
+                    locationGroupIdDyn = "629"
                 case "Mobile":
-                     locationGroupIdDyn = "627"
-                    break
+                    locationGroupIdDyn = "627"
                 default:
-                     locationGroupIdDyn = "628"
-                    break
+                    locationGroupIdDyn = "628"
                 }
                 
                 let newMachine = Machine(
@@ -1201,7 +1197,7 @@ struct AddMachineView: View {
                     messageType: Int(config?.messageType ?? 0),
                     serialNumber: serialNumber,
                     platformId: Int(config?.platformId ?? 0),
-                    friendlyName: friendlyName,
+                    friendlyName: friendlyName, // ✅ Utilise la valeur auto-générée
                     ownership: config?.ownership ?? "",
                     employeeType: selectedEmployee ?? "",
                     vpnSelect: selectedVPN ?? "",
@@ -1217,7 +1213,8 @@ struct AddMachineView: View {
                 onAdd(newMachine)
                 dismiss()
             }
-            .disabled(endUserName.isEmpty || selectedDeviceType == nil || assetNumber.isEmpty || serialNumber.isEmpty || friendlyName.isEmpty || selectedEmployee == nil)
+            // ✅ Retiré || friendlyName.isEmpty
+            .disabled(endUserName.isEmpty || selectedDeviceType == nil || assetNumber.isEmpty || serialNumber.isEmpty || selectedEmployee == nil)
             .buttonStyle(.borderedProminent)
             
             Button("Annuler") {
@@ -1229,7 +1226,6 @@ struct AddMachineView: View {
         .padding()
     }
     
-    /// Fonction pour afficher un champ obligatoire avec une étoile rouge `*`
     @ViewBuilder
     private func requiredField(label: String, text: Binding<String>) -> some View {
         HStack {
@@ -1243,15 +1239,14 @@ struct AddMachineView: View {
         }
     }
     
-    /// Fonction pour créer un Toggle encadré
     @ViewBuilder
     private func borderedToggle(title: String, isOn: Binding<Bool>, isDisabled: Bool = false) -> some View {
         Toggle(title, isOn: isOn)
             .padding()
             .frame(maxWidth: .infinity, minHeight: 50)
             .background(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 1))
-            .disabled(isDisabled) // Désactive le Toggle si isDisabled est true
-            .opacity(isDisabled ? 0.5 : 1.0) // Change l'opacité pour indiquer la désactivation
+            .disabled(isDisabled)
+            .opacity(isDisabled ? 0.5 : 1.0)
     }
 }
 
