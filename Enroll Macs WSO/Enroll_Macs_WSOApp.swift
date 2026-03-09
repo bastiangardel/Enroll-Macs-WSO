@@ -120,10 +120,9 @@ enum KeychainKeys: String {
 let keychain = Keychain(service: "ch.epfl.machineenroll")
 
 // MARK: - Core Data Helpers
-func saveToCoreData(locationGroupId: String, platformId: Int, ownership: String, messageType: Int, sambaPath: String, ldapServer: String, ldapBaseDN: String) {
+func saveToCoreData(platformId: Int, ownership: String, messageType: Int, sambaPath: String, ldapServer: String, ldapBaseDN: String) {
     let context = PersistenceController.shared.container.viewContext
     let config = AppConfig(context: context)
-    config.locationGroupId = locationGroupId
     config.platformId = Int32(platformId)
     config.ownership = ownership
     config.messageType = Int32(messageType)
@@ -539,7 +538,7 @@ struct CSVImportView: View {
         
         // Récupération des valeurs constantes de configuration
         let config = getAppConfig() // Méthode pour récupérer la configuration depuis Core Data
-        let locationGroupId = config?.locationGroupId ?? "DefaultGroup"
+        let locationGroupId = "628"
         let platformId = config?.platformId ?? 12
         let messageType = config?.messageType ?? 0
         let ownership = config?.ownership ?? "C"
@@ -1445,7 +1444,7 @@ struct ConfigurationView: View {
     @Environment(\.dismiss) var dismiss
     @Binding var isConfigured: Bool
     @State private var showAlert = false
-    @State private var locID = ""
+    //@State private var locID = ""
     @State private var pID = ""
     @State private var OShip = ""
     @State private var MT = ""
@@ -1457,12 +1456,6 @@ struct ConfigurationView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Text("Location Group ID:")
-                    .frame(width: 150, alignment: .leading)
-                TextField("Entrez le Location Group ID", text: $locID)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-            }
             HStack {
                 Text("Platform ID:")
                     .frame(width: 150, alignment: .leading)
@@ -1516,7 +1509,7 @@ struct ConfigurationView: View {
                     saveConfiguration()
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(locID.isEmpty || pID.isEmpty || OShip.isEmpty || MT.isEmpty || sPath.isEmpty)
+                .disabled(pID.isEmpty || OShip.isEmpty || MT.isEmpty || sPath.isEmpty)
                 
                 Button("Clear Configuration") {
                     clearField()
@@ -1525,7 +1518,7 @@ struct ConfigurationView: View {
                 .buttonStyle(.bordered)
                 
                 Button("Close App") {
-                    if(!locID.isEmpty && !pID.isEmpty && !OShip.isEmpty && !MT.isEmpty && !sPath.isEmpty){
+                    if(!pID.isEmpty && !OShip.isEmpty && !MT.isEmpty && !sPath.isEmpty){
                         saveConfiguration()
                         exit(0)
                     }else{
@@ -1552,7 +1545,6 @@ struct ConfigurationView: View {
     // Charger les valeurs existantes depuis Core Data et Keychain
     func loadConfiguration() {
         if let config = getAppConfig() {
-            locID = config.locationGroupId ?? ""
             pID = String(config.platformId)
             OShip = config.ownership ?? ""
             MT = String(config.messageType)
@@ -1569,7 +1561,6 @@ struct ConfigurationView: View {
     // Enregistrer les nouvelles valeurs dans Core Data et Keychain
     func saveConfiguration() {
         saveToCoreData(
-            locationGroupId: locID,
             platformId: Int(pID) ?? 0,
             ownership: OShip,
             messageType: Int(MT) ?? 0,
@@ -1585,7 +1576,6 @@ struct ConfigurationView: View {
     
     // Réinitialiser les champs
     func clearField() {
-        locID = ""
         pID = ""
         OShip = ""
         MT = ""

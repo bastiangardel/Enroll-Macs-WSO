@@ -3,7 +3,6 @@
     <entity name="AppConfig" representedClassName="AppConfig" syncable="YES" codeGenerationType="class">
         <attribute name="ldapBaseDN" optional="YES" attributeType="String"/>
         <attribute name="ldapServer" optional="YES" attributeType="String"/>
-        <attribute name="locationGroupId" optional="YES" attributeType="String"/>
         <attribute name="messageType" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="ownership" optional="YES" attributeType="String"/>
         <attribute name="platformId" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
