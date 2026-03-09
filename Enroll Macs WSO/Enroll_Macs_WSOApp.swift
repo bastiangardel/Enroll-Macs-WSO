@@ -120,7 +120,7 @@ enum KeychainKeys: String {
 let keychain = Keychain(service: "ch.epfl.machineenroll")
 
 // MARK: - Core Data Helpers
-func saveToCoreData(locationGroupId: String, platformId: Int, ownership: String, messageType: Int, sambaPath: String) {
+func saveToCoreData(locationGroupId: String, platformId: Int, ownership: String, messageType: Int, sambaPath: String, ldapServer: String, ldapBaseDN: String) {
     let context = PersistenceController.shared.container.viewContext
     let config = AppConfig(context: context)
     config.locationGroupId = locationGroupId
@@ -128,6 +128,8 @@ func saveToCoreData(locationGroupId: String, platformId: Int, ownership: String,
     config.ownership = ownership
     config.messageType = Int32(messageType)
     config.sambaPath = sambaPath
+    config.ldapServer = ldapServer
+    config.ldapBaseDN = ldapBaseDN
     
     do {
         try context.save()
@@ -163,7 +165,52 @@ func getAppConfig() -> AppConfig? {
     return try? context.fetch(request).first
 }
 
+// MARK: - LDAP Helper
+func fetchEmailFromLDAP(username: String, completion: @escaping (String?) -> Void) {
+    guard let config = getAppConfig(),
+          let ldapServer = config.ldapServer, !ldapServer.isEmpty,
+          !username.isEmpty else {
+        completion(nil)
+        return
+    }
 
+    DispatchQueue.global(qos: .userInitiated).async {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/ldapsearch")
+        process.arguments = [
+            "-v",
+            "-x",
+            "-H", ldapServer,
+            "-b", config.ldapBaseDN ?? "o=epfl,c=ch",
+            "uid=\(username)"
+        ]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+
+            // Parse "mail: user@example.com"
+            let email = output
+                .components(separatedBy: "\n")
+                .first(where: { $0.lowercased().hasPrefix("mail:") })
+                .map { String($0.dropFirst(5)).trimmingCharacters(in: .whitespaces) }
+
+            DispatchQueue.main.async {
+                completion(email)
+            }
+        } catch {
+            DispatchQueue.main.async {
+                completion(nil)
+            }
+        }
+    }
+}
 
 // MARK: - Samba Storage Helper
 func saveFileToSamba(filename: String, content: Data, completion: @escaping (Bool, String) -> Void) {
@@ -1142,6 +1189,7 @@ struct AddMachineView: View {
     @State private var assetNumber = ""
     @State private var serialNumber = ""
     @State private var email = ""
+    @State private var isLoadingEmail = false
     
     // ✅ friendlyName auto-généré à partir de assetNumber
     private var friendlyName: String { "SCX-\(assetNumber)" }
@@ -1160,7 +1208,31 @@ struct AddMachineView: View {
                     requiredField(label: "SCIPER", text: $SCIPER)
                     requiredField(label: "Numéro d'inventaire", text: $assetNumber)
                     requiredField(label: "Numéro de série", text: $serialNumber)
-                    requiredField(label: "Email", text: $email)
+                    HStack {
+                        Text("Email")
+                            .frame(width: 180, alignment: .leading)
+                            .foregroundColor(.primary)
+                        Text("*")
+                            .foregroundColor(.red)
+                        TextField("Entrez l'email", text: $email)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        Button(action: {
+                            isLoadingEmail = true
+                            fetchEmailFromLDAP(username: endUserName) { result in
+                                email = result ?? ""
+                                isLoadingEmail = false
+                            }
+                        }) {
+                            if isLoadingEmail {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Text("Load email")
+                            }
+                        }
+                        .disabled(endUserName.isEmpty || isLoadingEmail)
+                        .frame(width: 90)
+                    }
                 }
                 .padding(.horizontal)
                 
@@ -1221,7 +1293,7 @@ struct AddMachineView: View {
                 onAdd(newMachine)
                 dismiss()
             }
-            .disabled(endUserName.isEmpty || selectedDeviceType == nil || assetNumber.isEmpty || serialNumber.isEmpty || selectedEmployee == nil)
+            .disabled(endUserName.isEmpty || selectedDeviceType == nil || assetNumber.isEmpty || serialNumber.isEmpty || selectedEmployee == nil || email.isEmpty)
             .buttonStyle(.borderedProminent)
             
             Button("Annuler") {
@@ -1344,6 +1416,8 @@ struct ConfigurationView: View {
     @State private var sPath = ""
     @State private var sUsername = ""
     @State private var sPassword = ""
+    @State private var ldapServer = ""
+    @State private var ldapBaseDN = ""
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -1387,6 +1461,18 @@ struct ConfigurationView: View {
                 Text("Mot de passe Samba:")
                     .frame(width: 150, alignment: .leading)
                 SecureField("Entrez le mot de passe Samba", text: $sPassword)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+            }
+            HStack {
+                Text("Serveur LDAP:")
+                    .frame(width: 150, alignment: .leading)
+                TextField("Ex: ldaps://ldap.epfl.ch", text: $ldapServer)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+            }
+            HStack {
+                Text("Base DN LDAP:")
+                    .frame(width: 150, alignment: .leading)
+                TextField("Ex: o=epfl,c=ch", text: $ldapBaseDN)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
             }
             HStack {
@@ -1435,6 +1521,8 @@ struct ConfigurationView: View {
             OShip = config.ownership ?? ""
             MT = String(config.messageType)
             sPath = config.sambaPath ?? ""
+            ldapServer = config.ldapServer ?? ""
+            ldapBaseDN = config.ldapBaseDN ?? ""
         }
         sUsername = keychain[KeychainKeys.sambaUsername.rawValue] ?? ""
         sPassword = keychain[KeychainKeys.sambaPassword.rawValue] ?? ""
@@ -1449,7 +1537,9 @@ struct ConfigurationView: View {
             platformId: Int(pID) ?? 0,
             ownership: OShip,
             messageType: Int(MT) ?? 0,
-            sambaPath: sPath
+            sambaPath: sPath,
+            ldapServer: ldapServer,
+            ldapBaseDN: ldapBaseDN
         )
         keychain[KeychainKeys.sambaUsername.rawValue] = sUsername
         keychain[KeychainKeys.sambaPassword.rawValue] = sPassword
@@ -1466,6 +1556,8 @@ struct ConfigurationView: View {
         sPath = ""
         sUsername = ""
         sPassword = ""
+        ldapServer = ""
+        ldapBaseDN = ""
     }
 }
 
