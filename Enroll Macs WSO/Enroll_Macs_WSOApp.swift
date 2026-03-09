@@ -80,6 +80,7 @@ struct Machine: Identifiable, Codable {
     @BoolAsInt var acrobatReaderException: Bool
     var devicetype: String
     var SCIPER: String
+    var Email: String
     
     enum CodingKeys: String, CodingKey {
         case endUserName = "EndUserName"
@@ -100,6 +101,7 @@ struct Machine: Identifiable, Codable {
         case acrobatReaderException = "acrobatreaderexceptionssc"
         case devicetype = "devicetypemacssc"
         case SCIPER = "SCIPER"
+        case Email = "MailAddress"
     }
     
     func toJSON() -> Data? {
@@ -596,7 +598,8 @@ struct CSVImportView: View {
                     linaException: false,
                     acrobatReaderException: false,
                     devicetype: "",
-                    SCIPER: ""
+                    SCIPER: "",
+                    Email: ""
                 )
                 outputMachines.append(machine)
             }
@@ -868,7 +871,8 @@ struct MachineListView: View {
                 selectedTableauPrep: machines.first { $0.id == selectedMachines.first! }?.tableauPrep ?? false,
                 mindmanagerSelected: machines.first { $0.id == selectedMachines.first! }?.mindmanager ?? false,
                 linaExceptionSelected: machines.first { $0.id == selectedMachines.first! }?.linaException ?? false,
-                acrobatreaderExceptionSelected: machines.first { $0.id == selectedMachines.first! }?.acrobatReaderException ?? false
+                acrobatreaderExceptionSelected: machines.first { $0.id == selectedMachines.first! }?.acrobatReaderException ?? false,
+                email: machines.first { $0.id == selectedMachines.first! }?.Email ?? ""
             )
         }
     }
@@ -1031,6 +1035,7 @@ struct DetailsMachineView: View {
     var mindmanagerSelected: Bool
     var linaExceptionSelected: Bool
     var acrobatreaderExceptionSelected: Bool
+    var email: String = ""
     
     @Environment(\.dismiss) var dismiss
     
@@ -1050,7 +1055,8 @@ struct DetailsMachineView: View {
                         ("SCIPER", SCIPER),
                         ("Numéro d'actif", assetNumber),
                         ("Numéro de série", serialNumber),
-                        ("Nom convivial", friendlyName)
+                        ("Nom convivial", friendlyName),
+                        ("Email", email == "" ? "Non renseigné" : email)
                     ])
                     
                     InfoSectionView(title: "Sélections", content: [
@@ -1135,6 +1141,7 @@ struct AddMachineView: View {
     @State private var SCIPER = ""
     @State private var assetNumber = ""
     @State private var serialNumber = ""
+    @State private var email = ""
     
     // ✅ friendlyName auto-généré à partir de assetNumber
     private var friendlyName: String { "SCX-\(assetNumber)" }
@@ -1153,7 +1160,7 @@ struct AddMachineView: View {
                     requiredField(label: "SCIPER", text: $SCIPER)
                     requiredField(label: "Numéro d'inventaire", text: $assetNumber)
                     requiredField(label: "Numéro de série", text: $serialNumber)
-                    // ✅ Champ "Nom de la machine" supprimé
+                    requiredField(label: "Email", text: $email)
                 }
                 .padding(.horizontal)
                 
@@ -1208,12 +1215,12 @@ struct AddMachineView: View {
                     linaException: linaExceptionSelected,
                     acrobatReaderException: acrobatReaderExceptionSelected,
                     devicetype: selectedDeviceType ?? "",
-                    SCIPER: SCIPER
+                    SCIPER: SCIPER,
+                    Email: email
                 )
                 onAdd(newMachine)
                 dismiss()
             }
-            // ✅ Retiré || friendlyName.isEmpty
             .disabled(endUserName.isEmpty || selectedDeviceType == nil || assetNumber.isEmpty || serialNumber.isEmpty || selectedEmployee == nil)
             .buttonStyle(.borderedProminent)
             
