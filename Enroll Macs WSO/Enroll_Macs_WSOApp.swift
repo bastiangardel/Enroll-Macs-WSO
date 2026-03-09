@@ -166,11 +166,18 @@ func getAppConfig() -> AppConfig? {
 }
 
 // MARK: - LDAP Helper
-func fetchEmailFromLDAP(username: String, completion: @escaping (String?) -> Void) {
+enum LDAPResult {
+    case found(String)       // Email trouvé
+    case noMail              // Compte trouvé mais pas d'email
+    case notFound            // Compte introuvable dans l'AD
+    case error               // Erreur technique
+}
+
+func fetchEmailFromLDAP(username: String, completion: @escaping (LDAPResult) -> Void) {
     guard let config = getAppConfig(),
           let ldapServer = config.ldapServer, !ldapServer.isEmpty,
           !username.isEmpty else {
-        completion(nil)
+        completion(.error)
         return
     }
 
@@ -195,19 +202,27 @@ func fetchEmailFromLDAP(username: String, completion: @escaping (String?) -> Voi
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             let output = String(data: data, encoding: .utf8) ?? ""
 
-            // Parse "mail: user@example.com"
+            // Vérifie si le compte existe (présence d'un dn: dans la réponse)
+            let hasEntry = output.components(separatedBy: "\n").contains { $0.lowercased().hasPrefix("dn:") && !$0.lowercased().hasPrefix("dn: ") == false || $0.lowercased().hasPrefix("dn:") }
+
+            if !hasEntry {
+                DispatchQueue.main.async { completion(.notFound) }
+                return
+            }
+
+            // Cherche l'attribut mail
             let email = output
                 .components(separatedBy: "\n")
                 .first(where: { $0.lowercased().hasPrefix("mail:") })
                 .map { String($0.dropFirst(5)).trimmingCharacters(in: .whitespaces) }
 
-            DispatchQueue.main.async {
-                completion(email)
+            if let email = email, !email.isEmpty {
+                DispatchQueue.main.async { completion(.found(email)) }
+            } else {
+                DispatchQueue.main.async { completion(.noMail) }
             }
         } catch {
-            DispatchQueue.main.async {
-                completion(nil)
-            }
+            DispatchQueue.main.async { completion(.error) }
         }
     }
 }
@@ -1190,6 +1205,7 @@ struct AddMachineView: View {
     @State private var serialNumber = ""
     @State private var email = ""
     @State private var isLoadingEmail = false
+    @State private var ldapMessage: String = ""
     
     // ✅ friendlyName auto-généré à partir de assetNumber
     private var friendlyName: String { "SCX-\(assetNumber)" }
@@ -1218,9 +1234,23 @@ struct AddMachineView: View {
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                         Button(action: {
                             isLoadingEmail = true
+                            ldapMessage = ""
                             fetchEmailFromLDAP(username: endUserName) { result in
-                                email = result ?? ""
                                 isLoadingEmail = false
+                                switch result {
+                                case .found(let mail):
+                                    email = mail
+                                    ldapMessage = ""
+                                case .noMail:
+                                    email = ""
+                                    ldapMessage = "Pas d'email disponible, merci d'en définir un."
+                                case .notFound:
+                                    email = ""
+                                    ldapMessage = "Le compte n'existe pas dans l'AD."
+                                case .error:
+                                    email = ""
+                                    ldapMessage = "Erreur lors de la recherche LDAP."
+                                }
                             }
                         }) {
                             if isLoadingEmail {
@@ -1232,6 +1262,12 @@ struct AddMachineView: View {
                         }
                         .disabled(endUserName.isEmpty || isLoadingEmail)
                         .frame(width: 90)
+                    }
+                    if !ldapMessage.isEmpty {
+                        Text(ldapMessage)
+                            .foregroundColor(.orange)
+                            .font(.caption)
+                            .padding(.leading, 184)
                     }
                 }
                 .padding(.horizontal)
