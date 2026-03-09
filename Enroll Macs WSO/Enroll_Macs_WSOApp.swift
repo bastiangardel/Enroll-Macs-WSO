@@ -1266,7 +1266,7 @@ struct AddMachineView: View {
                     if !ldapMessage.isEmpty {
                         Text(ldapMessage)
                             .foregroundColor(.orange)
-                            .font(.caption)
+                            .font(.body)
                             .padding(.leading, 184)
                     }
                 }
