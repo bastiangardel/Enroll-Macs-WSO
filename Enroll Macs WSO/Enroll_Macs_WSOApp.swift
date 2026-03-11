@@ -868,12 +868,10 @@ struct MachineListView: View {
                     }
                 }
                 
-                Button("Détails Machine") {
+                Button("Editer Machine") {
                     showDetailsMachine = true
                 }
-                .disabled(selectedMachines.isEmpty)
-                .disabled(selectedMachines.count > 1)
-                .disabled(isProcessing)
+                .disabled(selectedMachines.count != 1 || isProcessing)
                 
                 Button("Supprimer sélectionnées") {
                     deleteSelectedMachines()
@@ -917,24 +915,17 @@ struct MachineListView: View {
                 sortMachines(by: sortKey)
             }
         }
-        .sheet(isPresented: $showDetailsMachine) {
-            DetailsMachineView(
-                endUserName: machines.first { $0.id == selectedMachines.first! }?.endUserName ?? "",
-                SCIPER: machines.first { $0.id == selectedMachines.first! }?.SCIPER ?? "",
-                assetNumber: machines.first { $0.id == selectedMachines.first! }?.assetNumber ?? "",
-                serialNumber: machines.first { $0.id == selectedMachines.first! }?.serialNumber ?? "",
-                friendlyName: machines.first { $0.id == selectedMachines.first! }?.friendlyName ?? "",
-                selectedEmployee: machines.first { $0.id == selectedMachines.first! }?.employeeType ?? "",
-                selectedDeviceType: machines.first { $0.id == selectedMachines.first! }?.devicetype ?? "",
-                selectedVPN: machines.first { $0.id == selectedMachines.first! }?.vpnSelect ?? "",
-                selectedFileMaker: machines.first { $0.id == selectedMachines.first! }?.filemaker ?? "",
-                selectedTableauDesktop: machines.first { $0.id == selectedMachines.first! }?.tableauDesktop ?? false,
-                selectedTableauPrep: machines.first { $0.id == selectedMachines.first! }?.tableauPrep ?? false,
-                mindmanagerSelected: machines.first { $0.id == selectedMachines.first! }?.mindmanager ?? false,
-                linaExceptionSelected: machines.first { $0.id == selectedMachines.first! }?.linaException ?? false,
-                acrobatreaderExceptionSelected: machines.first { $0.id == selectedMachines.first! }?.acrobatReaderException ?? false,
-                email: machines.first { $0.id == selectedMachines.first! }?.Email ?? ""
-            )
+        .sheet(isPresented: $showDetailsMachine, onDismiss: {
+            selectedMachines.removeAll()
+        }) {
+            if let selectedId = selectedMachines.first,
+               let index = machines.firstIndex(where: { $0.id == selectedId }) {
+                DetailsMachineView(machine: machines[index]) { updatedMachine in
+                    machines[index] = updatedMachine
+                    showStatusMessage("Machine mise à jour avec succès !")
+                    sortMachines(by: sortKey)
+                }
+            }
         }
     }
     
@@ -1082,73 +1073,198 @@ struct MachineListView: View {
 // MARK: - Details machine Sheet
 
 struct DetailsMachineView: View {
-    var endUserName: String
-    var SCIPER: String
-    var assetNumber: String
-    var serialNumber: String
-    var friendlyName: String
-    var selectedEmployee: String = ""
-    var selectedDeviceType: String = ""
-    var selectedVPN: String = ""
-    var selectedFileMaker: String = ""
-    var selectedTableauDesktop: Bool
-    var selectedTableauPrep: Bool
-    var mindmanagerSelected: Bool
-    var linaExceptionSelected: Bool
-    var acrobatreaderExceptionSelected: Bool
-    var email: String = ""
-    
+    var machine: Machine
+    var onSave: (Machine) -> Void
+
     @Environment(\.dismiss) var dismiss
-    
+
+    @State private var selectedEmployee: String?
+    @State private var selectedDeviceType: String?
+    @State private var selectedVPN: String?
+    @State private var selectedFileMaker: String?
+    @State private var selectedTableau: [String] = []
+    @State private var mindmanagerSelected = false
+    @State private var linaExceptionSelected = false
+    @State private var acrobatReaderExceptionSelected = false
+
+    @State private var locationGroupIdDyn = ""
+    @State private var endUserName = ""
+    @State private var SCIPER = ""
+    @State private var assetNumber = ""
+    @State private var serialNumber = ""
+    @State private var email = ""
+    @State private var isLoadingEmail = false
+    @State private var ldapMessage: String = ""
+
+    private var friendlyName: String { "SCX-\(assetNumber)" }
+
+    let columns = [
+        GridItem(.flexible(minimum: 200, maximum: 300)),
+        GridItem(.flexible(minimum: 200, maximum: 300)),
+        GridItem(.flexible(minimum: 200, maximum: 300))
+    ]
+
+    init(machine: Machine, onSave: @escaping (Machine) -> Void) {
+        self.machine = machine
+        self.onSave = onSave
+        _endUserName = State(initialValue: machine.endUserName)
+        _SCIPER = State(initialValue: machine.SCIPER)
+        _assetNumber = State(initialValue: machine.assetNumber)
+        _serialNumber = State(initialValue: machine.serialNumber)
+        _selectedEmployee = State(initialValue: machine.employeeType.isEmpty ? nil : machine.employeeType)
+        _selectedDeviceType = State(initialValue: machine.devicetype.isEmpty ? nil : machine.devicetype)
+        _selectedVPN = State(initialValue: machine.vpnSelect.isEmpty ? nil : machine.vpnSelect)
+        _selectedFileMaker = State(initialValue: machine.filemaker.isEmpty ? nil : machine.filemaker)
+        _mindmanagerSelected = State(initialValue: machine.mindmanager)
+        _linaExceptionSelected = State(initialValue: machine.linaException)
+        _acrobatReaderExceptionSelected = State(initialValue: machine.acrobatReaderException)
+        _email = State(initialValue: machine.Email)
+        var tableau: [String] = []
+        if machine.tableauDesktop { tableau.append("Desktop") }
+        if machine.tableauPrep { tableau.append("Prep") }
+        _selectedTableau = State(initialValue: tableau)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Détails de la machine")
-                .font(.title)
-                .bold()
-                .padding(.top, 10)
-                .frame(maxWidth: .infinity, alignment: .center)
-            
-            ScrollView {
-                VStack(alignment: .leading, spacing: 15) {
-                    
-                    InfoSectionView(title: "Informations Générales", content: [
-                        ("Nom d'utilisateur", endUserName),
-                        ("SCIPER", SCIPER),
-                        ("Numéro d'actif", assetNumber),
-                        ("Numéro de série", serialNumber),
-                        ("Nom convivial", friendlyName),
-                        ("Email", email == "" ? "Non renseigné" : email)
-                    ])
-                    
-                    InfoSectionView(title: "Sélections", content: [
-                        ("Type d'employé", selectedEmployee),
-                        ("Type d'appareil", selectedDeviceType),
-                        ("VPN Guest", selectedVPN == "" ? "Aucune sélection" : selectedVPN),
-                        ("FileMaker", selectedFileMaker == "" ? "Aucune sélection" : selectedFileMaker),
-                        ("TableauDesktop", selectedTableauDesktop ? "Oui" : "Non"),
-                        ("TableauPrep", selectedTableauPrep ? "Oui" : "Non"),
-                        ("MindManager", mindmanagerSelected ? "Oui" : "Non"),
-                        ("Lina", linaExceptionSelected ? "Non" : "Oui"),
-                        ("Exception Acrobat Pro", acrobatreaderExceptionSelected ? "Oui" : "Non")
-                    ])
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(spacing: 10) {
+                    requiredField(label: "Username", text: $endUserName)
+                    requiredField(label: "SCIPER", text: $SCIPER)
+                    requiredField(label: "Numéro d'inventaire", text: $assetNumber)
+                    requiredField(label: "Numéro de série", text: $serialNumber)
+                    HStack {
+                        Text("Email")
+                            .frame(width: 180, alignment: .leading)
+                            .foregroundColor(.primary)
+                        Text("*")
+                            .foregroundColor(.red)
+                        TextField("Entrez l'email", text: $email)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        Button(action: {
+                            isLoadingEmail = true
+                            ldapMessage = ""
+                            fetchEmailFromLDAP(username: endUserName) { result in
+                                isLoadingEmail = false
+                                switch result {
+                                case .found(let mail):
+                                    email = mail
+                                    ldapMessage = ""
+                                case .noMail:
+                                    email = ""
+                                    ldapMessage = "Pas d'email disponible, merci d'en définir un."
+                                case .notFound:
+                                    email = ""
+                                    ldapMessage = "Le compte n'existe pas dans l'AD."
+                                case .error:
+                                    email = ""
+                                    ldapMessage = "Erreur lors de la recherche LDAP."
+                                }
+                            }
+                        }) {
+                            if isLoadingEmail {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Text("Load email")
+                            }
+                        }
+                        .disabled(endUserName.isEmpty || isLoadingEmail)
+                        .frame(width: 90)
+                    }
+                    if !ldapMessage.isEmpty {
+                        Text(ldapMessage)
+                            .foregroundColor(.orange)
+                            .font(.body)
+                            .padding(.leading, 184)
+                    }
                 }
-                .padding()
-            }
-            
-            // Bouton de fermeture
-            HStack {
-                Spacer()
-                Button("Fermer") {
-                    dismiss()
+                .padding(.horizontal)
+
+                LazyVGrid(columns: columns, spacing: 20) {
+                    SectionView(title: "Employee Type", options: ["Personnel", "Hôte", "Hors-EPFL"], selection: $selectedEmployee, isRequired: true)
+                    SectionView(title: "Device Type", options: ["Laptop", "Workstation", "Mobile"], selection: $selectedDeviceType, isRequired: true)
+                    SectionView(title: "VPN Guest", options: ["SSC", "AGA"], selection: $selectedVPN)
+                    SectionView(title: "FileMaker", options: ["TTO-AJ", "OHSPR-DSE", "Autres"], selection: $selectedFileMaker)
+
+                    MultipleSelectionView(title: "Tableau", options: ["Desktop", "Prep"], selections: $selectedTableau)
+
+                    borderedToggle(title: "MindManager", isOn: $mindmanagerSelected)
+                    borderedToggle(title: "Pas de Lina", isOn: $linaExceptionSelected)
+                    Spacer()
+                        .frame(width: 50, height: 50)
+                    borderedToggle(title: "Exception Acrobat Pro", isOn: $acrobatReaderExceptionSelected, isDisabled: selectedEmployee == "Personnel")
                 }
-                .buttonStyle(.borderedProminent)
-                Spacer()
+                .padding(.horizontal)
             }
-            .padding(.bottom, 10)
+            .padding()
         }
+
+        HStack {
+            Button("Enregistrer") {
+                switch selectedDeviceType {
+                case "Laptop": locationGroupIdDyn = "628"
+                case "Workstation": locationGroupIdDyn = "629"
+                case "Mobile": locationGroupIdDyn = "627"
+                default: locationGroupIdDyn = machine.locationGroupId
+                }
+                let updated = Machine(
+                    endUserName: endUserName,
+                    assetNumber: assetNumber,
+                    locationGroupId: locationGroupIdDyn,
+                    messageType: machine.messageType,
+                    serialNumber: serialNumber,
+                    platformId: machine.platformId,
+                    friendlyName: friendlyName,
+                    ownership: machine.ownership,
+                    employeeType: selectedEmployee ?? "",
+                    vpnSelect: selectedVPN ?? "",
+                    tableauDesktop: selectedTableau.contains("Desktop"),
+                    tableauPrep: selectedTableau.contains("Prep"),
+                    filemaker: selectedFileMaker ?? "",
+                    mindmanager: mindmanagerSelected,
+                    linaException: linaExceptionSelected,
+                    acrobatReaderException: acrobatReaderExceptionSelected,
+                    devicetype: selectedDeviceType ?? "",
+                    SCIPER: SCIPER,
+                    Email: email
+                )
+                onSave(updated)
+                dismiss()
+            }
+            .disabled(endUserName.isEmpty || selectedDeviceType == nil || assetNumber.isEmpty || serialNumber.isEmpty || selectedEmployee == nil || email.isEmpty)
+            .buttonStyle(.borderedProminent)
+
+            Button("Annuler") {
+                dismiss()
+            }
+            .buttonStyle(.bordered)
+        }
+        .frame(maxWidth: .infinity)
         .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.gray.opacity(0.05)) // Fond gris clair pour plus de lisibilité
+    }
+
+    @ViewBuilder
+    private func requiredField(label: String, text: Binding<String>) -> some View {
+        HStack {
+            Text("\(label) ")
+                .frame(width: 180, alignment: .leading)
+                .foregroundColor(.primary)
+            Text("*")
+                .foregroundColor(.red)
+            TextField("Entrez le \(label.lowercased())", text: text)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+        }
+    }
+
+    @ViewBuilder
+    private func borderedToggle(title: String, isOn: Binding<Bool>, isDisabled: Bool = false) -> some View {
+        Toggle(title, isOn: isOn)
+            .padding()
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .background(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 1))
+            .disabled(isDisabled)
+            .opacity(isDisabled ? 0.5 : 1.0)
     }
 }
 
